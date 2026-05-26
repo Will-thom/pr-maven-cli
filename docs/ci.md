@@ -40,6 +40,8 @@ Jobs:
 - `CodeQL`: static analysis for Go.
 - `Dependency review`: reviews dependency changes on pull requests.
 
+`Dependency review` is advisory while the repository dependency graph is unavailable. It remains visible in the Security workflow, but the Stage 1 protected merge gate is `All CI checks`.
+
 ## Contributor Acknowledgement Workflow
 
 File: `.github/workflows/thank-contributor.yml`
@@ -95,4 +97,12 @@ On Windows PowerShell:
 
 ## Branch Protection Recommendation
 
-When branch protection is enabled, use `All CI checks` as the required CI status. Keep security checks visible, but avoid making scheduled security tooling a blocker for focused contributor PRs until the project has more maintainers.
+The `main` branch should be protected.
+
+Recommended required status:
+
+- `All CI checks`
+
+Keep security checks visible, but avoid making scheduled security tooling a blocker for focused contributor PRs until the project has more maintainers.
+
+Only users with maintainer-level repository permissions should merge pull requests. See [MAINTAINERS.md](../MAINTAINERS.md).
