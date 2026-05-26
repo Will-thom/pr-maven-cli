@@ -29,4 +29,3 @@ func main() {
 		fmt.Printf("%s: %s\n", finding.ID, finding.ReproduceCommand)
 	}
 }
-

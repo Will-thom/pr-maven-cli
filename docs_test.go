@@ -8,10 +8,10 @@ import (
 
 func TestDocumentationCoversInstallationUsageAndExamples(t *testing.T) {
 	files := map[string]string{
-		"README.md":               mustReadFile(t, "README.md"),
-		"docs/installation.md":    mustReadFile(t, "docs/installation.md"),
-		"docs/usage.md":           mustReadFile(t, "docs/usage.md"),
-		"examples/README.md":      mustReadFile(t, "examples/README.md"),
+		"README.md":                mustReadFile(t, "README.md"),
+		"docs/installation.md":     mustReadFile(t, "docs/installation.md"),
+		"docs/usage.md":            mustReadFile(t, "docs/usage.md"),
+		"examples/README.md":       mustReadFile(t, "examples/README.md"),
 		"examples/library/main.go": mustReadFile(t, "examples/library/main.go"),
 	}
 
@@ -44,4 +44,3 @@ func assertContains(t *testing.T, text, expected string) {
 		t.Fatalf("documentation missing %q", expected)
 	}
 }
-
