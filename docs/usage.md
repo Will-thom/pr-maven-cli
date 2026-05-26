@@ -1,6 +1,6 @@
 # Usage
 
-PR Maven CLI turns Maven Surefire and Failsafe XML reports into focused failure context.
+PR Maven CLI turns Maven test, quality, and selected build log artifacts into focused failure context.
 
 It answers:
 
@@ -81,7 +81,7 @@ Expected behavior:
 
 - exits with code `0`;
 - reports zero findings;
-- confirms that no Surefire or Failsafe failures were found.
+- confirms that no supported Maven test or quality failures were found.
 
 ## Use Against A Real Maven Workspace
 
@@ -103,7 +103,7 @@ Then analyze the workspace:
 prmaven fails -project /path/to/maven/repo
 ```
 
-The CLI scans module-level report folders such as:
+The CLI scans module-level report folders and deterministic quality artifacts such as:
 
 ```text
 target/surefire-reports
@@ -111,6 +111,8 @@ target/failsafe-reports
 target/checkstyle-result.xml
 target/spotbugsXml.xml
 target/spotbugs.xml
+target/maven-enforcer.log
+target/maven.log
 ```
 
 ## CI Pattern

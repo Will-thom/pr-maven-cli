@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 )
@@ -81,12 +82,21 @@ type spotbugsSourceLine struct {
 	End        string `xml:"end,attr"`
 }
 
+type enforcerFailure struct {
+	Rule      string
+	Message   string
+	Execution string
+}
+
 type reportFile struct {
 	absPath    string
 	relPath    string
 	modulePath string
 	kind       string
 }
+
+var enforcerRuleFailurePattern = regexp.MustCompile(`(?i)^Rule\s+\d+:\s+(.+?)\s+failed with message:\s*(.*)$`)
+var enforcerExecutionPattern = regexp.MustCompile(`maven-enforcer-plugin:[^\s]+:enforce\s+\(([^)]+)\)`)
 
 func Analyze(options Options) (Report, error) {
 	projectRoot := options.ProjectDir
@@ -150,9 +160,14 @@ func findReportFiles(projectRoot string) ([]reportFile, error) {
 	if err != nil {
 		return nil, err
 	}
+	enforcerReports, err := findEnforcerLogReports(projectRoot)
+	if err != nil {
+		return nil, err
+	}
 
 	reports := append(junitReports, checkstyleReports...)
 	reports = append(reports, spotbugsReports...)
+	reports = append(reports, enforcerReports...)
 	sort.Slice(reports, func(i, j int) bool {
 		return reports[i].relPath < reports[j].relPath
 	})
@@ -221,6 +236,56 @@ func findSpotBugsReports(projectRoot string) ([]reportFile, error) {
 	})
 }
 
+func findEnforcerLogReports(projectRoot string) ([]reportFile, error) {
+	names := map[string]bool{
+		"maven-enforcer.log": true,
+		"maven.log":          true,
+	}
+	var reports []reportFile
+
+	err := filepath.WalkDir(projectRoot, func(path string, entry fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if entry.IsDir() {
+			switch entry.Name() {
+			case ".git", ".idea", ".mvn":
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if !names[entry.Name()] || !isInsideTarget(path) {
+			return nil
+		}
+
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return fmt.Errorf("read report %s: %w", slashPath(relativePath(projectRoot, path)), err)
+		}
+		if !strings.Contains(string(data), "maven-enforcer-plugin") {
+			return nil
+		}
+
+		rel := relativePath(projectRoot, path)
+		modulePath := inferTargetModulePath(projectRoot, path)
+		reports = append(reports, reportFile{
+			absPath:    path,
+			relPath:    slashPath(rel),
+			modulePath: slashPath(modulePath),
+			kind:       "enforcer",
+		})
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sort.Slice(reports, func(i, j int) bool {
+		return reports[i].relPath < reports[j].relPath
+	})
+	return reports, nil
+}
+
 func findNamedTargetReports(projectRoot, kind string, names map[string]bool) ([]reportFile, error) {
 	var reports []reportFile
 
@@ -265,6 +330,8 @@ func parseReport(projectRoot string, moduleByPath map[string]Module, reportFile 
 		return parseCheckstyleReport(projectRoot, moduleByPath, reportFile)
 	case "spotbugs":
 		return parseSpotBugsReport(projectRoot, moduleByPath, reportFile)
+	case "enforcer":
+		return parseEnforcerLogReport(moduleByPath, reportFile)
 	default:
 		return parseJUnitReport(projectRoot, moduleByPath, reportFile)
 	}
@@ -362,6 +429,27 @@ func parseSpotBugsReport(projectRoot string, moduleByPath map[string]Module, rep
 	return findings, nil
 }
 
+func parseEnforcerLogReport(moduleByPath map[string]Module, reportFile reportFile) ([]Finding, error) {
+	data, err := os.ReadFile(reportFile.absPath)
+	if err != nil {
+		return nil, fmt.Errorf("read report %s: %w", reportFile.relPath, err)
+	}
+
+	module := moduleByPath[reportFile.modulePath]
+	if module.Path == "" {
+		module = Module{
+			Name: moduleNameFromPath(filepath.FromSlash(reportFile.modulePath)),
+			Path: reportFile.modulePath,
+		}
+	}
+
+	var findings []Finding
+	for _, failure := range enforcerFailuresFromLog(string(data)) {
+		findings = append(findings, buildEnforcerFinding(module, reportFile, failure))
+	}
+	return findings, nil
+}
+
 func buildFinding(module Module, reportFile reportFile, testCase junitCase, problem junitProblem, kind string) Finding {
 	className := strings.TrimSpace(testCase.ClassName)
 	if className == "" {
@@ -440,6 +528,30 @@ func buildSpotBugsFinding(module Module, reportFile reportFile, projectRoot stri
 		Confidence:         "high",
 		ConfidenceReasons:  spotbugsConfidenceReasons(module.Path, sourcePath, bug.Type),
 		SourceReportFormat: "spotbugs-xml",
+	}
+}
+
+func buildEnforcerFinding(module Module, reportFile reportFile, failure enforcerFailure) Finding {
+	execution := firstNonEmpty(failure.Execution, "enforce")
+	message := oneLine(firstNonEmpty(failure.Message, failure.Rule, "Maven Enforcer rule failed"))
+
+	return Finding{
+		ID:                 findingID(module.Path, "maven-enforcer-plugin", firstNonEmpty(failure.Rule, execution), "enforcer"),
+		Module:             module.Name,
+		ModulePath:         module.Path,
+		ReportPath:         reportFile.relPath,
+		ReportKind:         reportFile.kind,
+		MavenPlugin:        pluginForReportKind(reportFile.kind),
+		MavenPhase:         phaseForReportKind(reportFile.kind),
+		TestClass:          "maven-enforcer-plugin",
+		TestName:           execution,
+		FailureKind:        "rule",
+		FailureType:        failure.Rule,
+		Message:            message,
+		ReproduceCommand:   reproduceCommand(reportFile.kind, module.Path, ""),
+		Confidence:         "high",
+		ConfidenceReasons:  enforcerConfidenceReasons(module.Path, failure.Rule),
+		SourceReportFormat: "maven-log",
 	}
 }
 
@@ -553,7 +665,106 @@ func spotbugsFailureType(bug spotbugsBug) string {
 	return firstNonEmpty(bug.Type, bug.Category)
 }
 
+func enforcerFailuresFromLog(log string) []enforcerFailure {
+	lines := strings.Split(log, "\n")
+	execution := enforcerExecutionFromLog(lines)
+	seen := map[string]bool{}
+	var failures []enforcerFailure
+
+	for i, line := range lines {
+		text := stripMavenLogPrefix(line)
+		match := enforcerRuleFailurePattern.FindStringSubmatch(text)
+		if match == nil {
+			continue
+		}
+
+		rule := strings.TrimSpace(match[1])
+		message := firstNonEmpty(strings.TrimSpace(match[2]), enforcerFailureMessage(lines, i))
+		key := rule + "|" + message
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		failures = append(failures, enforcerFailure{
+			Rule:      rule,
+			Message:   message,
+			Execution: execution,
+		})
+	}
+
+	if len(failures) > 0 {
+		return failures
+	}
+
+	genericMessage := enforcerGenericMessage(lines)
+	if genericMessage == "" {
+		return nil
+	}
+	return []enforcerFailure{{
+		Rule:      "maven-enforcer-plugin",
+		Message:   genericMessage,
+		Execution: execution,
+	}}
+}
+
+func enforcerExecutionFromLog(lines []string) string {
+	for _, line := range lines {
+		if !strings.Contains(line, "maven-enforcer-plugin") {
+			continue
+		}
+		match := enforcerExecutionPattern.FindStringSubmatch(line)
+		if match != nil {
+			return strings.TrimSpace(match[1])
+		}
+	}
+	return "enforce"
+}
+
+func enforcerFailureMessage(lines []string, ruleLine int) string {
+	var parts []string
+	for i := ruleLine + 1; i < len(lines); i++ {
+		text := stripMavenLogPrefix(lines[i])
+		if text == "" {
+			continue
+		}
+		if strings.HasPrefix(text, "Rule ") ||
+			strings.HasPrefix(text, "Failed to execute goal") ||
+			strings.HasPrefix(text, "BUILD ") ||
+			strings.HasPrefix(text, "--- ") {
+			break
+		}
+		parts = append(parts, text)
+		if len(parts) == 3 {
+			break
+		}
+	}
+	return oneLine(strings.Join(parts, " "))
+}
+
+func enforcerGenericMessage(lines []string) string {
+	for _, line := range lines {
+		text := stripMavenLogPrefix(line)
+		if strings.Contains(text, "maven-enforcer-plugin") && strings.Contains(text, "Failed to execute goal") {
+			return oneLine(text)
+		}
+	}
+	return ""
+}
+
+func stripMavenLogPrefix(line string) string {
+	text := strings.TrimSpace(line)
+	if strings.HasPrefix(text, "[") {
+		if end := strings.Index(text, "]"); end >= 0 {
+			return strings.TrimSpace(text[end+1:])
+		}
+	}
+	return text
+}
+
 func pluginForReportKind(kind string) string {
+	if kind == "enforcer" {
+		return "maven-enforcer-plugin"
+	}
 	if kind == "checkstyle" {
 		return "maven-checkstyle-plugin"
 	}
@@ -567,6 +778,9 @@ func pluginForReportKind(kind string) string {
 }
 
 func phaseForReportKind(kind string) string {
+	if kind == "enforcer" {
+		return "validate"
+	}
 	if kind == "checkstyle" {
 		return "verify"
 	}
@@ -591,6 +805,10 @@ func reproduceCommand(kind, modulePath, className string) string {
 	}
 	if kind == "spotbugs" {
 		parts = append(parts, "spotbugs:check")
+		return strings.Join(parts, " ")
+	}
+	if kind == "enforcer" {
+		parts = append(parts, "enforcer:enforce")
 		return strings.Join(parts, " ")
 	}
 	if kind == "failsafe" {
@@ -634,4 +852,15 @@ func checkstyleConfidenceReasons(modulePath, sourcePath string) []string {
 		"report path maps to Maven module " + modulePath,
 		"Checkstyle file entry maps to " + sourcePath,
 	}
+}
+
+func enforcerConfidenceReasons(modulePath, rule string) []string {
+	reasons := []string{
+		"failure was found in a Maven log containing maven-enforcer-plugin output",
+		"report path maps to Maven module " + modulePath,
+	}
+	if rule != "" {
+		reasons = append(reasons, "Maven Enforcer rule is "+rule)
+	}
+	return reasons
 }

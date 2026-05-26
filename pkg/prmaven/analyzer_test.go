@@ -182,6 +182,63 @@ func TestAnalyzeSpotBugsReport(t *testing.T) {
 	assertReasonsContain(t, finding.ConfidenceReasons, "report path maps to Maven module service-core")
 }
 
+func TestAnalyzeEnforcerLog(t *testing.T) {
+	report, err := Analyze(Options{ProjectDir: "testdata/enforcer-project"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if report.Summary.ModuleCount != 2 {
+		t.Fatalf("module count = %d, want 2", report.Summary.ModuleCount)
+	}
+	if report.Summary.ReportCount != 1 {
+		t.Fatalf("report count = %d, want 1", report.Summary.ReportCount)
+	}
+	if report.Summary.FindingCount != 1 {
+		t.Fatalf("finding count = %d, want 1", report.Summary.FindingCount)
+	}
+
+	finding := report.Findings[0]
+	if finding.ModulePath != "service-core" {
+		t.Fatalf("module path = %q, want service-core", finding.ModulePath)
+	}
+	if finding.ReportPath != "service-core/target/maven-enforcer.log" {
+		t.Fatalf("report path = %q", finding.ReportPath)
+	}
+	if finding.ReportKind != "enforcer" {
+		t.Fatalf("report kind = %q, want enforcer", finding.ReportKind)
+	}
+	if finding.MavenPlugin != "maven-enforcer-plugin" {
+		t.Fatalf("plugin = %q, want maven-enforcer-plugin", finding.MavenPlugin)
+	}
+	if finding.MavenPhase != "validate" {
+		t.Fatalf("phase = %q, want validate", finding.MavenPhase)
+	}
+	if finding.TestClass != "maven-enforcer-plugin" {
+		t.Fatalf("log source = %q", finding.TestClass)
+	}
+	if finding.TestName != "require-maven-baseline" {
+		t.Fatalf("execution = %q", finding.TestName)
+	}
+	if finding.FailureKind != "rule" {
+		t.Fatalf("failure kind = %q, want rule", finding.FailureKind)
+	}
+	if finding.FailureType != "org.apache.maven.enforcer.rules.version.RequireMavenVersion" {
+		t.Fatalf("failure type = %q", finding.FailureType)
+	}
+	if finding.Message != "Detected Maven Version: 3.8.8 is not in the allowed range [3.9.0,)." {
+		t.Fatalf("message = %q", finding.Message)
+	}
+	if finding.ReproduceCommand != "mvn -pl service-core -am enforcer:enforce" {
+		t.Fatalf("reproduce command = %q", finding.ReproduceCommand)
+	}
+	if finding.SourceReportFormat != "maven-log" {
+		t.Fatalf("source format = %q, want maven-log", finding.SourceReportFormat)
+	}
+	assertReasonsContain(t, finding.ConfidenceReasons, "failure was found in a Maven log containing maven-enforcer-plugin output")
+	assertReasonsContain(t, finding.ConfidenceReasons, "report path maps to Maven module service-core")
+}
+
 func TestWriteTextIncludesActionableContext(t *testing.T) {
 	report, err := Analyze(Options{ProjectDir: "../../demo/multi-module-failure"})
 	if err != nil {
@@ -248,6 +305,32 @@ func TestWriteTextIncludesSpotBugsSourceContext(t *testing.T) {
 		"Kind: bug",
 		"Message: Possible null pointer dereference of order in dev.prmaven.demo.OrderAnalyzer.analyze(Order)",
 		"Reproduce: mvn -pl service-core -am spotbugs:check",
+	} {
+		if !strings.Contains(text, expected) {
+			t.Fatalf("text output missing %q\n%s", expected, text)
+		}
+	}
+}
+
+func TestWriteTextIncludesEnforcerLogContext(t *testing.T) {
+	report, err := Analyze(Options{ProjectDir: "testdata/enforcer-project"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var output bytes.Buffer
+	if err := WriteText(&output, report); err != nil {
+		t.Fatal(err)
+	}
+
+	text := output.String()
+	for _, expected := range []string{
+		"Plugin: maven-enforcer-plugin",
+		"Phase: validate",
+		"Log: maven-enforcer-plugin (require-maven-baseline)",
+		"Kind: rule",
+		"Message: Detected Maven Version: 3.8.8 is not in the allowed range [3.9.0,).",
+		"Reproduce: mvn -pl service-core -am enforcer:enforce",
 	} {
 		if !strings.Contains(text, expected) {
 			t.Fatalf("text output missing %q\n%s", expected, text)
