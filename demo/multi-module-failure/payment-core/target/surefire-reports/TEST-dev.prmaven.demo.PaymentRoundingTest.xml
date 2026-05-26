@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="dev.prmaven.demo.PaymentRoundingTest" tests="2" failures="1" errors="0" skipped="0">
+  <testcase classname="dev.prmaven.demo.PaymentRoundingTest" name="shouldRoundHalfEven"/>
+  <testcase classname="dev.prmaven.demo.PaymentRoundingTest" name="shouldRejectInvalidScale">
+    <failure message="expected:&lt;2.50&gt; but was:&lt;2.49&gt;" type="org.opentest4j.AssertionFailedError">
+      org.opentest4j.AssertionFailedError: expected:&lt;2.50&gt; but was:&lt;2.49&gt;
+    </failure>
+  </testcase>
+</testsuite>

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="dev.prmaven.demo.PaymentApiIT" tests="1" failures="0" errors="1" skipped="0">
+  <testcase classname="dev.prmaven.demo.PaymentApiIT" name="shouldExposePaymentSummary">
+    <error message="java.net.ConnectException: connection refused" type="java.net.ConnectException">
+      java.net.ConnectException: connection refused
+    </error>
+  </testcase>
+</testsuite>
