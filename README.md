@@ -19,8 +19,10 @@ The current release line focuses on deterministic local analysis of Maven report
 Target Maven baseline:
 
 - Maven 3.9.x.
-- Documented against Maven 3.9.16.
+- Documented against Maven 3.9.16, the latest release currently recommended by Apache Maven for all users.
 - Maven 4 support is planned later, after the Maven 4 line is production-ready.
+
+Apache's download page currently lists Maven 3.9.16 as the recommended release and Maven 4.x as a preview line that is not safe for production use: <https://maven.apache.org/download.cgi>.
 
 ## What It Does Today
 
