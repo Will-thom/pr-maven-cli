@@ -239,6 +239,63 @@ func TestAnalyzeEnforcerLog(t *testing.T) {
 	assertReasonsContain(t, finding.ConfidenceReasons, "report path maps to Maven module service-core")
 }
 
+func TestAnalyzeJaCoCoThresholdLog(t *testing.T) {
+	report, err := Analyze(Options{ProjectDir: "testdata/jacoco-project"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if report.Summary.ModuleCount != 2 {
+		t.Fatalf("module count = %d, want 2", report.Summary.ModuleCount)
+	}
+	if report.Summary.ReportCount != 1 {
+		t.Fatalf("report count = %d, want 1", report.Summary.ReportCount)
+	}
+	if report.Summary.FindingCount != 1 {
+		t.Fatalf("finding count = %d, want 1", report.Summary.FindingCount)
+	}
+
+	finding := report.Findings[0]
+	if finding.ModulePath != "service-core" {
+		t.Fatalf("module path = %q, want service-core", finding.ModulePath)
+	}
+	if finding.ReportPath != "service-core/target/jacoco.log" {
+		t.Fatalf("report path = %q", finding.ReportPath)
+	}
+	if finding.ReportKind != "jacoco" {
+		t.Fatalf("report kind = %q, want jacoco", finding.ReportKind)
+	}
+	if finding.MavenPlugin != "jacoco-maven-plugin" {
+		t.Fatalf("plugin = %q, want jacoco-maven-plugin", finding.MavenPlugin)
+	}
+	if finding.MavenPhase != "verify" {
+		t.Fatalf("phase = %q, want verify", finding.MavenPhase)
+	}
+	if finding.TestClass != "jacoco-maven-plugin" {
+		t.Fatalf("log source = %q", finding.TestClass)
+	}
+	if finding.TestName != "jacoco-check" {
+		t.Fatalf("execution = %q", finding.TestName)
+	}
+	if finding.FailureKind != "threshold" {
+		t.Fatalf("failure kind = %q, want threshold", finding.FailureKind)
+	}
+	if finding.FailureType != "instructions coverage ratio" {
+		t.Fatalf("failure type = %q", finding.FailureType)
+	}
+	if finding.Message != "Rule violated for bundle service-core: instructions covered ratio is 0.76, but expected minimum is 0.80" {
+		t.Fatalf("message = %q", finding.Message)
+	}
+	if finding.ReproduceCommand != "mvn -pl service-core -am jacoco:check" {
+		t.Fatalf("reproduce command = %q", finding.ReproduceCommand)
+	}
+	if finding.SourceReportFormat != "maven-log" {
+		t.Fatalf("source format = %q, want maven-log", finding.SourceReportFormat)
+	}
+	assertReasonsContain(t, finding.ConfidenceReasons, "threshold failure was found in a Maven log containing jacoco-maven-plugin output")
+	assertReasonsContain(t, finding.ConfidenceReasons, "report path maps to Maven module service-core")
+}
+
 func TestWriteTextIncludesActionableContext(t *testing.T) {
 	report, err := Analyze(Options{ProjectDir: "../../demo/multi-module-failure"})
 	if err != nil {
@@ -331,6 +388,32 @@ func TestWriteTextIncludesEnforcerLogContext(t *testing.T) {
 		"Kind: rule",
 		"Message: Detected Maven Version: 3.8.8 is not in the allowed range [3.9.0,).",
 		"Reproduce: mvn -pl service-core -am enforcer:enforce",
+	} {
+		if !strings.Contains(text, expected) {
+			t.Fatalf("text output missing %q\n%s", expected, text)
+		}
+	}
+}
+
+func TestWriteTextIncludesJaCoCoThresholdContext(t *testing.T) {
+	report, err := Analyze(Options{ProjectDir: "testdata/jacoco-project"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var output bytes.Buffer
+	if err := WriteText(&output, report); err != nil {
+		t.Fatal(err)
+	}
+
+	text := output.String()
+	for _, expected := range []string{
+		"Plugin: jacoco-maven-plugin",
+		"Phase: verify",
+		"Log: jacoco-maven-plugin (jacoco-check)",
+		"Kind: threshold",
+		"Message: Rule violated for bundle service-core: instructions covered ratio is 0.76, but expected minimum is 0.80",
+		"Reproduce: mvn -pl service-core -am jacoco:check",
 	} {
 		if !strings.Contains(text, expected) {
 			t.Fatalf("text output missing %q\n%s", expected, text)

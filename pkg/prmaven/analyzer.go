@@ -88,6 +88,15 @@ type enforcerFailure struct {
 	Execution string
 }
 
+type jacocoFailure struct {
+	Scope     string
+	Metric    string
+	Actual    string
+	Minimum   string
+	Message   string
+	Execution string
+}
+
 type reportFile struct {
 	absPath    string
 	relPath    string
@@ -97,6 +106,8 @@ type reportFile struct {
 
 var enforcerRuleFailurePattern = regexp.MustCompile(`(?i)^Rule\s+\d+:\s+(.+?)\s+failed with message:\s*(.*)$`)
 var enforcerExecutionPattern = regexp.MustCompile(`maven-enforcer-plugin:[^\s]+:enforce\s+\(([^)]+)\)`)
+var jacocoThresholdPattern = regexp.MustCompile(`(?i)^Rule violated for (.+?):\s+(.+?) covered ratio is ([0-9.]+), but expected minimum is ([0-9.]+)\.?$`)
+var jacocoExecutionPattern = regexp.MustCompile(`jacoco-maven-plugin:[^\s]+:check\s+\(([^)]+)\)`)
 
 func Analyze(options Options) (Report, error) {
 	projectRoot := options.ProjectDir
@@ -164,10 +175,15 @@ func findReportFiles(projectRoot string) ([]reportFile, error) {
 	if err != nil {
 		return nil, err
 	}
+	jacocoReports, err := findJaCoCoLogReports(projectRoot)
+	if err != nil {
+		return nil, err
+	}
 
 	reports := append(junitReports, checkstyleReports...)
 	reports = append(reports, spotbugsReports...)
 	reports = append(reports, enforcerReports...)
+	reports = append(reports, jacocoReports...)
 	sort.Slice(reports, func(i, j int) bool {
 		return reports[i].relPath < reports[j].relPath
 	})
@@ -241,49 +257,15 @@ func findEnforcerLogReports(projectRoot string) ([]reportFile, error) {
 		"maven-enforcer.log": true,
 		"maven.log":          true,
 	}
-	var reports []reportFile
+	return findPluginLogReports(projectRoot, "enforcer", names, "maven-enforcer-plugin")
+}
 
-	err := filepath.WalkDir(projectRoot, func(path string, entry fs.DirEntry, walkErr error) error {
-		if walkErr != nil {
-			return walkErr
-		}
-		if entry.IsDir() {
-			switch entry.Name() {
-			case ".git", ".idea", ".mvn":
-				return filepath.SkipDir
-			}
-			return nil
-		}
-		if !names[entry.Name()] || !isInsideTarget(path) {
-			return nil
-		}
-
-		data, err := os.ReadFile(path)
-		if err != nil {
-			return fmt.Errorf("read report %s: %w", slashPath(relativePath(projectRoot, path)), err)
-		}
-		if !strings.Contains(string(data), "maven-enforcer-plugin") {
-			return nil
-		}
-
-		rel := relativePath(projectRoot, path)
-		modulePath := inferTargetModulePath(projectRoot, path)
-		reports = append(reports, reportFile{
-			absPath:    path,
-			relPath:    slashPath(rel),
-			modulePath: slashPath(modulePath),
-			kind:       "enforcer",
-		})
-		return nil
-	})
-	if err != nil {
-		return nil, err
+func findJaCoCoLogReports(projectRoot string) ([]reportFile, error) {
+	names := map[string]bool{
+		"jacoco.log": true,
+		"maven.log":  true,
 	}
-
-	sort.Slice(reports, func(i, j int) bool {
-		return reports[i].relPath < reports[j].relPath
-	})
-	return reports, nil
+	return findPluginLogReports(projectRoot, "jacoco", names, "jacoco-maven-plugin")
 }
 
 func findNamedTargetReports(projectRoot, kind string, names map[string]bool) ([]reportFile, error) {
@@ -324,6 +306,52 @@ func findNamedTargetReports(projectRoot, kind string, names map[string]bool) ([]
 	return reports, nil
 }
 
+func findPluginLogReports(projectRoot, kind string, names map[string]bool, plugin string) ([]reportFile, error) {
+	var reports []reportFile
+
+	err := filepath.WalkDir(projectRoot, func(path string, entry fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if entry.IsDir() {
+			switch entry.Name() {
+			case ".git", ".idea", ".mvn":
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if !names[entry.Name()] || !isInsideTarget(path) {
+			return nil
+		}
+
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return fmt.Errorf("read report %s: %w", slashPath(relativePath(projectRoot, path)), err)
+		}
+		if !strings.Contains(string(data), plugin) {
+			return nil
+		}
+
+		rel := relativePath(projectRoot, path)
+		modulePath := inferTargetModulePath(projectRoot, path)
+		reports = append(reports, reportFile{
+			absPath:    path,
+			relPath:    slashPath(rel),
+			modulePath: slashPath(modulePath),
+			kind:       kind,
+		})
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sort.Slice(reports, func(i, j int) bool {
+		return reports[i].relPath < reports[j].relPath
+	})
+	return reports, nil
+}
+
 func parseReport(projectRoot string, moduleByPath map[string]Module, reportFile reportFile) ([]Finding, error) {
 	switch reportFile.kind {
 	case "checkstyle":
@@ -332,6 +360,8 @@ func parseReport(projectRoot string, moduleByPath map[string]Module, reportFile 
 		return parseSpotBugsReport(projectRoot, moduleByPath, reportFile)
 	case "enforcer":
 		return parseEnforcerLogReport(moduleByPath, reportFile)
+	case "jacoco":
+		return parseJaCoCoLogReport(moduleByPath, reportFile)
 	default:
 		return parseJUnitReport(projectRoot, moduleByPath, reportFile)
 	}
@@ -450,6 +480,27 @@ func parseEnforcerLogReport(moduleByPath map[string]Module, reportFile reportFil
 	return findings, nil
 }
 
+func parseJaCoCoLogReport(moduleByPath map[string]Module, reportFile reportFile) ([]Finding, error) {
+	data, err := os.ReadFile(reportFile.absPath)
+	if err != nil {
+		return nil, fmt.Errorf("read report %s: %w", reportFile.relPath, err)
+	}
+
+	module := moduleByPath[reportFile.modulePath]
+	if module.Path == "" {
+		module = Module{
+			Name: moduleNameFromPath(filepath.FromSlash(reportFile.modulePath)),
+			Path: reportFile.modulePath,
+		}
+	}
+
+	var findings []Finding
+	for _, failure := range jacocoFailuresFromLog(string(data)) {
+		findings = append(findings, buildJaCoCoFinding(module, reportFile, failure))
+	}
+	return findings, nil
+}
+
 func buildFinding(module Module, reportFile reportFile, testCase junitCase, problem junitProblem, kind string) Finding {
 	className := strings.TrimSpace(testCase.ClassName)
 	if className == "" {
@@ -551,6 +602,30 @@ func buildEnforcerFinding(module Module, reportFile reportFile, failure enforcer
 		ReproduceCommand:   reproduceCommand(reportFile.kind, module.Path, ""),
 		Confidence:         "high",
 		ConfidenceReasons:  enforcerConfidenceReasons(module.Path, failure.Rule),
+		SourceReportFormat: "maven-log",
+	}
+}
+
+func buildJaCoCoFinding(module Module, reportFile reportFile, failure jacocoFailure) Finding {
+	execution := firstNonEmpty(failure.Execution, "check")
+	message := oneLine(firstNonEmpty(failure.Message, "JaCoCo coverage threshold failed"))
+
+	return Finding{
+		ID:                 findingID(module.Path, "jacoco-maven-plugin", firstNonEmpty(failure.Metric, execution), "threshold"),
+		Module:             module.Name,
+		ModulePath:         module.Path,
+		ReportPath:         reportFile.relPath,
+		ReportKind:         reportFile.kind,
+		MavenPlugin:        pluginForReportKind(reportFile.kind),
+		MavenPhase:         phaseForReportKind(reportFile.kind),
+		TestClass:          "jacoco-maven-plugin",
+		TestName:           execution,
+		FailureKind:        "threshold",
+		FailureType:        jacocoFailureType(failure),
+		Message:            message,
+		ReproduceCommand:   reproduceCommand(reportFile.kind, module.Path, ""),
+		Confidence:         "high",
+		ConfidenceReasons:  jacocoConfidenceReasons(module.Path, failure),
 		SourceReportFormat: "maven-log",
 	}
 }
@@ -761,7 +836,85 @@ func stripMavenLogPrefix(line string) string {
 	return text
 }
 
+func jacocoFailuresFromLog(log string) []jacocoFailure {
+	lines := strings.Split(log, "\n")
+	execution := jacocoExecutionFromLog(lines)
+	seen := map[string]bool{}
+	var failures []jacocoFailure
+
+	for _, line := range lines {
+		text := stripMavenLogPrefix(line)
+		match := jacocoThresholdPattern.FindStringSubmatch(text)
+		if match == nil {
+			continue
+		}
+
+		failure := jacocoFailure{
+			Scope:     strings.TrimSpace(match[1]),
+			Metric:    strings.TrimSpace(match[2]),
+			Actual:    strings.TrimSpace(match[3]),
+			Minimum:   strings.TrimSpace(match[4]),
+			Message:   text,
+			Execution: execution,
+		}
+		key := failure.Scope + "|" + failure.Metric + "|" + failure.Actual + "|" + failure.Minimum
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		failures = append(failures, failure)
+	}
+
+	if len(failures) > 0 {
+		return failures
+	}
+
+	genericMessage := jacocoGenericMessage(lines)
+	if genericMessage == "" {
+		return nil
+	}
+	return []jacocoFailure{{
+		Metric:    "coverage",
+		Message:   genericMessage,
+		Execution: execution,
+	}}
+}
+
+func jacocoExecutionFromLog(lines []string) string {
+	for _, line := range lines {
+		if !strings.Contains(line, "jacoco-maven-plugin") {
+			continue
+		}
+		match := jacocoExecutionPattern.FindStringSubmatch(line)
+		if match != nil {
+			return strings.TrimSpace(match[1])
+		}
+	}
+	return "check"
+}
+
+func jacocoGenericMessage(lines []string) string {
+	for _, line := range lines {
+		text := stripMavenLogPrefix(line)
+		if strings.Contains(text, "jacoco-maven-plugin") && strings.Contains(text, "Coverage checks have not been met") {
+			return oneLine(text)
+		}
+	}
+	return ""
+}
+
+func jacocoFailureType(failure jacocoFailure) string {
+	metric := strings.TrimSpace(failure.Metric)
+	if metric == "" {
+		return "coverage"
+	}
+	return metric + " coverage ratio"
+}
+
 func pluginForReportKind(kind string) string {
+	if kind == "jacoco" {
+		return "jacoco-maven-plugin"
+	}
 	if kind == "enforcer" {
 		return "maven-enforcer-plugin"
 	}
@@ -778,6 +931,9 @@ func pluginForReportKind(kind string) string {
 }
 
 func phaseForReportKind(kind string) string {
+	if kind == "jacoco" {
+		return "verify"
+	}
 	if kind == "enforcer" {
 		return "validate"
 	}
@@ -809,6 +965,10 @@ func reproduceCommand(kind, modulePath, className string) string {
 	}
 	if kind == "enforcer" {
 		parts = append(parts, "enforcer:enforce")
+		return strings.Join(parts, " ")
+	}
+	if kind == "jacoco" {
+		parts = append(parts, "jacoco:check")
 		return strings.Join(parts, " ")
 	}
 	if kind == "failsafe" {
@@ -861,6 +1021,17 @@ func enforcerConfidenceReasons(modulePath, rule string) []string {
 	}
 	if rule != "" {
 		reasons = append(reasons, "Maven Enforcer rule is "+rule)
+	}
+	return reasons
+}
+
+func jacocoConfidenceReasons(modulePath string, failure jacocoFailure) []string {
+	reasons := []string{
+		"threshold failure was found in a Maven log containing jacoco-maven-plugin output",
+		"report path maps to Maven module " + modulePath,
+	}
+	if failure.Metric != "" && failure.Actual != "" && failure.Minimum != "" {
+		reasons = append(reasons, "JaCoCo "+failure.Metric+" ratio "+failure.Actual+" is below minimum "+failure.Minimum)
 	}
 	return reasons
 }
