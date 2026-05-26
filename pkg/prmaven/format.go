@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"strings"
 )
 
 func WriteJSON(w io.Writer, report Report) error {
@@ -24,7 +25,7 @@ func WriteText(w io.Writer, report Report) error {
 		return err
 	}
 	if len(report.Findings) == 0 {
-		_, err := fmt.Fprintln(w, "No Maven test failures found in Surefire or Failsafe reports.")
+		_, err := fmt.Fprintln(w, "No Maven test or quality failures found in Surefire, Failsafe, or Checkstyle reports.")
 		return err
 	}
 
@@ -37,8 +38,10 @@ func WriteText(w io.Writer, report Report) error {
 			"Report: " + finding.ReportPath,
 			"Plugin: " + finding.MavenPlugin,
 			"Phase: " + finding.MavenPhase,
-			"Test: " + finding.TestClass + "." + finding.TestName,
 			"Kind: " + finding.FailureKind,
+		}
+		if contextLine := findingContextLine(finding); contextLine != "" {
+			lines = append(lines[:4], append([]string{contextLine}, lines[4:]...)...)
 		}
 		if finding.Message != "" {
 			lines = append(lines, "Message: "+finding.Message)
@@ -65,4 +68,28 @@ func WriteText(w io.Writer, report Report) error {
 		}
 	}
 	return nil
+}
+
+func findingContextLine(finding Finding) string {
+	className := strings.TrimSpace(finding.TestClass)
+	testName := strings.TrimSpace(finding.TestName)
+	if className == "" && testName == "" {
+		return ""
+	}
+	if finding.SourceReportFormat != "junit-xml" {
+		if className == "" {
+			return "Source: " + testName
+		}
+		if testName == "" {
+			return "Source: " + className
+		}
+		return "Source: " + className + " (" + testName + ")"
+	}
+	if className == "" {
+		return "Test: " + testName
+	}
+	if testName == "" {
+		return "Test: " + className
+	}
+	return "Test: " + className + "." + testName
 }

@@ -3,4 +3,4 @@ PR Maven CLI - Maven failure context
 Project: <PROJECT_ROOT>
 Modules: 2 | Reports: 1 | Findings: 0
 
-No Maven test failures found in Surefire or Failsafe reports.
+No Maven test or quality failures found in Surefire, Failsafe, or Checkstyle reports.

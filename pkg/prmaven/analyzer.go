@@ -38,6 +38,23 @@ type junitProblem struct {
 	Body    string `xml:",chardata"`
 }
 
+type checkstyleReport struct {
+	Files []checkstyleFile `xml:"file"`
+}
+
+type checkstyleFile struct {
+	Name   string            `xml:"name,attr"`
+	Errors []checkstyleError `xml:"error"`
+}
+
+type checkstyleError struct {
+	Line     string `xml:"line,attr"`
+	Column   string `xml:"column,attr"`
+	Severity string `xml:"severity,attr"`
+	Message  string `xml:"message,attr"`
+	Source   string `xml:"source,attr"`
+}
+
 type reportFile struct {
 	absPath    string
 	relPath    string
@@ -64,14 +81,14 @@ func Analyze(options Options) (Report, error) {
 		moduleByPath[module.Path] = module
 	}
 
-	reportFiles, err := findJUnitReports(absRoot)
+	reportFiles, err := findReportFiles(absRoot)
 	if err != nil {
 		return Report{}, err
 	}
 
 	var findings []Finding
 	for _, reportFile := range reportFiles {
-		reportFindings, err := parseJUnitReport(absRoot, moduleByPath, reportFile)
+		reportFindings, err := parseReport(absRoot, moduleByPath, reportFile)
 		if err != nil {
 			return Report{}, err
 		}
@@ -92,6 +109,23 @@ func Analyze(options Options) (Report, error) {
 		Modules:  modules,
 		Findings: findings,
 	}, nil
+}
+
+func findReportFiles(projectRoot string) ([]reportFile, error) {
+	junitReports, err := findJUnitReports(projectRoot)
+	if err != nil {
+		return nil, err
+	}
+	checkstyleReports, err := findCheckstyleReports(projectRoot)
+	if err != nil {
+		return nil, err
+	}
+
+	reports := append(junitReports, checkstyleReports...)
+	sort.Slice(reports, func(i, j int) bool {
+		return reports[i].relPath < reports[j].relPath
+	})
+	return reports, nil
 }
 
 func findJUnitReports(projectRoot string) ([]reportFile, error) {
@@ -143,6 +177,53 @@ func findJUnitReports(projectRoot string) ([]reportFile, error) {
 	return reports, nil
 }
 
+func findCheckstyleReports(projectRoot string) ([]reportFile, error) {
+	var reports []reportFile
+
+	err := filepath.WalkDir(projectRoot, func(path string, entry fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if entry.IsDir() {
+			switch entry.Name() {
+			case ".git", ".idea", ".mvn":
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if entry.Name() != "checkstyle-result.xml" || !isInsideTarget(path) {
+			return nil
+		}
+
+		rel := relativePath(projectRoot, path)
+		modulePath := inferTargetModulePath(projectRoot, path)
+		reports = append(reports, reportFile{
+			absPath:    path,
+			relPath:    slashPath(rel),
+			modulePath: slashPath(modulePath),
+			kind:       "checkstyle",
+		})
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	sort.Slice(reports, func(i, j int) bool {
+		return reports[i].relPath < reports[j].relPath
+	})
+	return reports, nil
+}
+
+func parseReport(projectRoot string, moduleByPath map[string]Module, reportFile reportFile) ([]Finding, error) {
+	switch reportFile.kind {
+	case "checkstyle":
+		return parseCheckstyleReport(projectRoot, moduleByPath, reportFile)
+	default:
+		return parseJUnitReport(projectRoot, moduleByPath, reportFile)
+	}
+}
+
 func parseJUnitReport(projectRoot string, moduleByPath map[string]Module, reportFile reportFile) ([]Finding, error) {
 	data, err := os.ReadFile(reportFile.absPath)
 	if err != nil {
@@ -180,6 +261,35 @@ func parseJUnitReport(projectRoot string, moduleByPath map[string]Module, report
 	return findings, nil
 }
 
+func parseCheckstyleReport(projectRoot string, moduleByPath map[string]Module, reportFile reportFile) ([]Finding, error) {
+	data, err := os.ReadFile(reportFile.absPath)
+	if err != nil {
+		return nil, fmt.Errorf("read report %s: %w", reportFile.relPath, err)
+	}
+
+	var report checkstyleReport
+	if err := xml.Unmarshal(data, &report); err != nil {
+		return nil, fmt.Errorf("parse report %s: %w", reportFile.relPath, err)
+	}
+
+	module := moduleByPath[reportFile.modulePath]
+	if module.Path == "" {
+		module = Module{
+			Name: moduleNameFromPath(filepath.FromSlash(reportFile.modulePath)),
+			Path: reportFile.modulePath,
+		}
+	}
+
+	var findings []Finding
+	for _, file := range report.Files {
+		sourcePath := checkstyleSourcePath(projectRoot, file.Name)
+		for _, violation := range file.Errors {
+			findings = append(findings, buildCheckstyleFinding(module, reportFile, sourcePath, violation))
+		}
+	}
+	return findings, nil
+}
+
 func buildFinding(module Module, reportFile reportFile, testCase junitCase, problem junitProblem, kind string) Finding {
 	className := strings.TrimSpace(testCase.ClassName)
 	if className == "" {
@@ -208,6 +318,33 @@ func buildFinding(module Module, reportFile reportFile, testCase junitCase, prob
 	}
 }
 
+func buildCheckstyleFinding(module Module, reportFile reportFile, sourcePath string, violation checkstyleError) Finding {
+	location := checkstyleLocation(violation.Line, violation.Column)
+	message := oneLine(violation.Message)
+	if violation.Severity != "" && message != "" {
+		message = violation.Severity + ": " + message
+	}
+
+	return Finding{
+		ID:                 findingID(module.Path, sourcePath, location, "checkstyle"),
+		Module:             module.Name,
+		ModulePath:         module.Path,
+		ReportPath:         reportFile.relPath,
+		ReportKind:         reportFile.kind,
+		MavenPlugin:        pluginForReportKind(reportFile.kind),
+		MavenPhase:         phaseForReportKind(reportFile.kind),
+		TestClass:          sourcePath,
+		TestName:           location,
+		FailureKind:        "violation",
+		FailureType:        firstNonEmpty(violation.Source, violation.Severity),
+		Message:            message,
+		ReproduceCommand:   reproduceCommand(reportFile.kind, module.Path, ""),
+		Confidence:         "high",
+		ConfidenceReasons:  checkstyleConfidenceReasons(module.Path, sourcePath),
+		SourceReportFormat: "checkstyle-xml",
+	}
+}
+
 func inferModulePath(projectRoot, reportPath string) string {
 	reportDir := filepath.Dir(reportPath)
 	targetDir := filepath.Dir(reportDir)
@@ -218,7 +355,66 @@ func inferModulePath(projectRoot, reportPath string) string {
 	return relativePath(projectRoot, moduleDir)
 }
 
+func inferTargetModulePath(projectRoot, reportPath string) string {
+	for dir := filepath.Dir(reportPath); dir != "." && dir != string(filepath.Separator); dir = filepath.Dir(dir) {
+		if filepath.Base(dir) == "target" {
+			moduleDir := filepath.Dir(dir)
+			if samePath(moduleDir, projectRoot) {
+				return "."
+			}
+			return relativePath(projectRoot, moduleDir)
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
+		}
+	}
+	return inferModulePath(projectRoot, reportPath)
+}
+
+func isInsideTarget(path string) bool {
+	for dir := filepath.Dir(path); dir != "." && dir != string(filepath.Separator); dir = filepath.Dir(dir) {
+		if filepath.Base(dir) == "target" {
+			return true
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return false
+		}
+	}
+	return false
+}
+
+func checkstyleSourcePath(projectRoot, sourcePath string) string {
+	sourcePath = strings.TrimSpace(sourcePath)
+	if sourcePath == "" {
+		return "unknown"
+	}
+	if filepath.IsAbs(sourcePath) {
+		return slashPath(relativePath(projectRoot, sourcePath))
+	}
+	return slashPath(sourcePath)
+}
+
+func checkstyleLocation(line, column string) string {
+	line = strings.TrimSpace(line)
+	column = strings.TrimSpace(column)
+	switch {
+	case line != "" && column != "":
+		return "line " + line + ", column " + column
+	case line != "":
+		return "line " + line
+	case column != "":
+		return "column " + column
+	default:
+		return "location unknown"
+	}
+}
+
 func pluginForReportKind(kind string) string {
+	if kind == "checkstyle" {
+		return "maven-checkstyle-plugin"
+	}
 	if kind == "failsafe" {
 		return "maven-failsafe-plugin"
 	}
@@ -226,6 +422,9 @@ func pluginForReportKind(kind string) string {
 }
 
 func phaseForReportKind(kind string) string {
+	if kind == "checkstyle" {
+		return "verify"
+	}
 	if kind == "failsafe" {
 		return "verify"
 	}
@@ -237,6 +436,10 @@ func reproduceCommand(kind, modulePath, className string) string {
 	parts := []string{"mvn"}
 	if modulePath != "." {
 		parts = append(parts, "-pl", modulePath, "-am")
+	}
+	if kind == "checkstyle" {
+		parts = append(parts, "checkstyle:check")
+		return strings.Join(parts, " ")
 	}
 	if kind == "failsafe" {
 		parts = append(parts, "-Dit.test="+class, "verify")
@@ -259,4 +462,12 @@ func confidenceReasons(kind, modulePath, className string) []string {
 		reasons = append(reasons, "reproduction command targets test class "+simpleClassName(className))
 	}
 	return reasons
+}
+
+func checkstyleConfidenceReasons(modulePath, sourcePath string) []string {
+	return []string{
+		"violation was found in a Maven Checkstyle XML report",
+		"report path maps to Maven module " + modulePath,
+		"Checkstyle file entry maps to " + sourcePath,
+	}
 }
