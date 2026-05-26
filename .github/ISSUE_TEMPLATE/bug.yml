@@ -1,0 +1,24 @@
+name: Bug report
+description: Report incorrect Maven failure context
+title: "[Bug]: "
+labels: ["type: bug"]
+body:
+  - type: textarea
+    id: observed
+    attributes:
+      label: Observed behavior
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction
+      description: Prefer sanitized Maven report fixtures over private logs.
+    validations:
+      required: true

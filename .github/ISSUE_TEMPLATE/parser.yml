@@ -1,0 +1,36 @@
+name: Parser support
+description: Add or improve support for a Maven report or log signal
+title: "[Parser]: "
+labels: ["area: parser", "help wanted", "agent-friendly"]
+body:
+  - type: input
+    id: signal
+    attributes:
+      label: Maven signal
+      placeholder: Checkstyle, SpotBugs, Enforcer, JaCoCo, Surefire edge case
+    validations:
+      required: true
+  - type: textarea
+    id: fixture
+    attributes:
+      label: Fixture shape
+      description: Describe the report/log fixture needed for tests.
+    validations:
+      required: true
+  - type: textarea
+    id: output
+    attributes:
+      label: Expected output
+      description: Describe the Finding fields or CLI output that should change.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      placeholder: |
+        - Add fixture under demo or testdata
+        - Add parser test
+        - go test ./... passes
+    validations:
+      required: true

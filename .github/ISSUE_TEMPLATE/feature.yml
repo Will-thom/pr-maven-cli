@@ -1,0 +1,30 @@
+name: Feature request
+description: Propose a focused PR Maven CLI improvement
+title: "[Feature]: "
+labels: ["type: enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What user problem should this solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Keep the scope focused and testable.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: List observable outcomes and tests.
+      placeholder: |
+        - go test ./... passes
+        - New fixture covers ...
+        - JSON/text output includes ...
+    validations:
+      required: true
