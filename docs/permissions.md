@@ -12,7 +12,7 @@ Do not switch it to private if that would disable branch protection or repositor
 
 Current maintainer policy:
 
-- William Thomaz, GitHub: `@Will-thom`, is the founder and principal maintainer.
+- Will-thom, GitHub: `@Will-thom`, is the founder and principal maintainer.
 - No external collaborator should receive write, maintain, or admin access during stabilization unless intentionally promoted.
 - External contributors can open issues and pull requests, but merge rights should stay limited to maintainers.
 

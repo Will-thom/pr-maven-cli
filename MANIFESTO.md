@@ -8,9 +8,9 @@ The project starts from one practical belief:
 
 ## Founder
 
-PR Maven CLI was founded by William Thomaz.
+PR Maven CLI was founded by Will-thom.
 
-The founder's goal is to build a useful open source tool for Java and Maven teams, while creating a contributor-friendly project where focused issues can be picked up by humans, maintainers, and automated coding agents.
+Will-thom is the public founder identity for this project. The founder's goal is to build a useful open source tool for Java and Maven teams, while creating a contributor-friendly project where focused issues can be picked up by humans, maintainers, and automated coding agents.
 
 ## Product Principles
 

@@ -4,7 +4,7 @@ PR Maven CLI is founder-led.
 
 ## Principal Maintainer
 
-- William Thomaz, GitHub: [@Will-thom](https://github.com/Will-thom)
+- Will-thom, GitHub: [@Will-thom](https://github.com/Will-thom)
 - Role: Founder and Principal Maintainer
 - Scope: product direction, roadmap, releases, merge policy, maintainer access, and final project decisions.
 - Repository-wide code owner: `@Will-thom`, through `.github/CODEOWNERS`.

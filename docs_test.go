@@ -35,6 +35,20 @@ func TestDocumentationCoversInstallationUsageAndExamples(t *testing.T) {
 	assertContains(t, files["examples/library/main.go"], "prmaven.Analyze")
 }
 
+func TestDocumentationUsesPublicFounderIdentity(t *testing.T) {
+	files := map[string]string{
+		"README.md":           mustReadFile(t, "README.md"),
+		"MANIFESTO.md":        mustReadFile(t, "MANIFESTO.md"),
+		"GOVERNANCE.md":       mustReadFile(t, "GOVERNANCE.md"),
+		"MAINTAINERS.md":      mustReadFile(t, "MAINTAINERS.md"),
+		"docs/permissions.md": mustReadFile(t, "docs/permissions.md"),
+	}
+
+	assertContains(t, files["README.md"], "PR Maven CLI was founded by Will-thom.")
+	assertContains(t, files["MANIFESTO.md"], "Will-thom is the public founder identity for this project.")
+	assertContains(t, files["GOVERNANCE.md"], "PR Maven CLI is founded by Will-thom.")
+}
+
 func mustReadFile(t *testing.T, path string) string {
 	t.Helper()
 
