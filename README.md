@@ -180,6 +180,7 @@ This is useful for:
 - [Roadmap](ROADMAP.md)
 - [Installation](docs/installation.md)
 - [Usage guide](docs/usage.md)
+- [JSON contract](docs/json-contract.md)
 - [Examples](examples/README.md)
 - [Integrations](docs/integrations.md)
 - [Contributing](CONTRIBUTING.md)
