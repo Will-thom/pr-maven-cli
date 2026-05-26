@@ -54,3 +54,5 @@ The workflow example at [github-actions/triage-maven-failures.yml](github-action
 - upload JSON output as an artifact;
 - preserve the original Maven failure status.
 
+GitHub Actions is the only first-party CI platform example today. The CLI itself does not call the GitHub API in Stage 1.
+

@@ -4,6 +4,8 @@ PR Maven CLI uses a Stage 1 OSS-style GitHub pipeline.
 
 The pipeline is intentionally dependency-light. Core checks do not require Maven, Docker, private credentials, hosted services, or external test infrastructure.
 
+This is project CI, not a runtime provider adapter. The Stage 1 CLI does not call GitHub APIs. Runtime/provider integration scope is documented in [integrations.md](integrations.md).
+
 ## CI Workflow
 
 File: `.github/workflows/ci.yml`
