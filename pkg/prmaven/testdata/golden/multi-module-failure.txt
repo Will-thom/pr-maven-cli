@@ -1,0 +1,35 @@
+PR Maven CLI - Maven failure context
+
+Project: <PROJECT_ROOT>
+Modules: 3 | Reports: 2 | Findings: 2
+
+1. payment-api-paymentapiit-shouldexposepaymentsummary-error
+   Module: payment-api (payment-api)
+   Report: payment-api/target/failsafe-reports/TEST-dev.prmaven.demo.PaymentApiIT.xml
+   Plugin: maven-failsafe-plugin
+   Phase: verify
+   Test: dev.prmaven.demo.PaymentApiIT.shouldExposePaymentSummary
+   Kind: error
+   Message: java.net.ConnectException: connection refused
+   Reproduce: mvn -pl payment-api -am -Dit.test=PaymentApiIT verify
+   Confidence: high
+   Reasons:
+   - failure was found in a Maven Failsafe JUnit XML report
+   - report path maps to Maven module payment-api
+   - reproduction command targets test class PaymentApiIT
+
+2. payment-core-paymentroundingtest-shouldrejectinvalidscale-failure
+   Module: payment-core (payment-core)
+   Report: payment-core/target/surefire-reports/TEST-dev.prmaven.demo.PaymentRoundingTest.xml
+   Plugin: maven-surefire-plugin
+   Phase: test
+   Test: dev.prmaven.demo.PaymentRoundingTest.shouldRejectInvalidScale
+   Kind: failure
+   Message: expected:<2.50> but was:<2.49>
+   Reproduce: mvn -pl payment-core -am -Dtest=PaymentRoundingTest test
+   Confidence: high
+   Reasons:
+   - failure was found in a Maven Surefire JUnit XML report
+   - report path maps to Maven module payment-core
+   - reproduction command targets test class PaymentRoundingTest
+

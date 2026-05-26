@@ -3,6 +3,8 @@ package prmaven
 import (
 	"bytes"
 	"encoding/json"
+	"os"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -46,6 +48,26 @@ func TestAnalyzeDemoProject(t *testing.T) {
 	}
 }
 
+func TestAnalyzeNoFailureDemoProject(t *testing.T) {
+	report, err := Analyze(Options{ProjectDir: "../../demo/no-failure"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if report.Summary.ModuleCount != 2 {
+		t.Fatalf("module count = %d, want 2", report.Summary.ModuleCount)
+	}
+	if report.Summary.ReportCount != 1 {
+		t.Fatalf("report count = %d, want 1", report.Summary.ReportCount)
+	}
+	if report.Summary.FindingCount != 0 {
+		t.Fatalf("finding count = %d, want 0", report.Summary.FindingCount)
+	}
+	if len(report.Findings) != 0 {
+		t.Fatalf("findings = %d, want 0", len(report.Findings))
+	}
+}
+
 func TestWriteTextIncludesActionableContext(t *testing.T) {
 	report, err := Analyze(Options{ProjectDir: "../../demo/multi-module-failure"})
 	if err != nil {
@@ -70,6 +92,50 @@ func TestWriteTextIncludesActionableContext(t *testing.T) {
 	}
 }
 
+func TestWriteTextMatchesGoldenFiles(t *testing.T) {
+	tests := []struct {
+		name       string
+		projectDir string
+		goldenPath string
+	}{
+		{
+			name:       "multi module failure",
+			projectDir: "../../demo/multi-module-failure",
+			goldenPath: "testdata/golden/multi-module-failure.txt",
+		},
+		{
+			name:       "no failure",
+			projectDir: "../../demo/no-failure",
+			goldenPath: "testdata/golden/no-failure.txt",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			report, err := Analyze(Options{ProjectDir: tt.projectDir})
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			var output bytes.Buffer
+			if err := WriteText(&output, report); err != nil {
+				t.Fatal(err)
+			}
+
+			wantBytes, err := os.ReadFile(tt.goldenPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			got := normalizeTextOutput(output.String())
+			want := normalizeTextOutput(string(wantBytes))
+			if got != want {
+				t.Fatalf("golden output mismatch\nwant:\n%s\n\ngot:\n%s", want, got)
+			}
+		})
+	}
+}
+
 func TestWriteJSONProducesStableContract(t *testing.T) {
 	report, err := Analyze(Options{ProjectDir: "../../demo/multi-module-failure"})
 	if err != nil {
@@ -91,4 +157,22 @@ func TestWriteJSONProducesStableContract(t *testing.T) {
 	if decoded.Findings[0].SourceReportFormat != "junit-xml" {
 		t.Fatalf("source format = %q, want junit-xml", decoded.Findings[0].SourceReportFormat)
 	}
+}
+
+func TestAnalyzeMissingProjectReturnsError(t *testing.T) {
+	_, err := Analyze(Options{ProjectDir: "testdata/does-not-exist"})
+	if err == nil {
+		t.Fatal("error = nil, want missing project error")
+	}
+	if !strings.Contains(err.Error(), "read Maven project root") {
+		t.Fatalf("error = %q, want Maven project root context", err.Error())
+	}
+}
+
+var projectRootLine = regexp.MustCompile(`(?m)^Project: .+$`)
+
+func normalizeTextOutput(value string) string {
+	value = strings.ReplaceAll(value, "\r\n", "\n")
+	value = projectRootLine.ReplaceAllString(value, "Project: <PROJECT_ROOT>")
+	return strings.TrimRight(value, "\n")
 }

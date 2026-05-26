@@ -3,16 +3,17 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/Will-thom/pr-maven-cli/pkg/prmaven"
 )
 
 func main() {
-	os.Exit(run(os.Args[1:]))
+	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr))
 }
 
-func run(args []string) int {
+func run(args []string, stdout, stderr io.Writer) int {
 	command := "fails"
 	if len(args) > 0 && args[0] != "" && args[0][0] != '-' {
 		command = args[0]
@@ -20,7 +21,7 @@ func run(args []string) int {
 	}
 
 	flags := flag.NewFlagSet("prmaven", flag.ContinueOnError)
-	flags.SetOutput(os.Stderr)
+	flags.SetOutput(stderr)
 	projectDir := flags.String("project", ".", "Maven project directory")
 	format := flags.String("format", "text", "output format: text or json")
 
@@ -35,31 +36,31 @@ func run(args []string) int {
 	switch command {
 	case "fails", "why":
 	default:
-		fmt.Fprintf(os.Stderr, "unknown command %q\n", command)
-		fmt.Fprintln(os.Stderr, "available commands: fails, why")
+		fmt.Fprintf(stderr, "unknown command %q\n", command)
+		fmt.Fprintln(stderr, "available commands: fails, why")
 		return 2
 	}
 
 	report, err := prmaven.Analyze(prmaven.Options{ProjectDir: *projectDir})
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
+		fmt.Fprintln(stderr, err)
 		return 1
 	}
 
 	switch *format {
 	case "json":
-		if err := prmaven.WriteJSON(os.Stdout, report); err != nil {
-			fmt.Fprintln(os.Stderr, err)
+		if err := prmaven.WriteJSON(stdout, report); err != nil {
+			fmt.Fprintln(stderr, err)
 			return 1
 		}
 	case "text":
-		if err := prmaven.WriteText(os.Stdout, report); err != nil {
-			fmt.Fprintln(os.Stderr, err)
+		if err := prmaven.WriteText(stdout, report); err != nil {
+			fmt.Fprintln(stderr, err)
 			return 1
 		}
 	default:
-		fmt.Fprintf(os.Stderr, "unknown format %q\n", *format)
-		fmt.Fprintln(os.Stderr, "available formats: text, json")
+		fmt.Fprintf(stderr, "unknown format %q\n", *format)
+		fmt.Fprintln(stderr, "available formats: text, json")
 		return 2
 	}
 
