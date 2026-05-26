@@ -25,7 +25,7 @@ func WriteText(w io.Writer, report Report) error {
 		return err
 	}
 	if len(report.Findings) == 0 {
-		_, err := fmt.Fprintln(w, "No Maven test or quality failures found in Surefire, Failsafe, or Checkstyle reports.")
+		_, err := fmt.Fprintln(w, "No Maven test or quality failures found in Surefire, Failsafe, Checkstyle, or SpotBugs reports.")
 		return err
 	}
 

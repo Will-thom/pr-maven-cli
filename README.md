@@ -32,6 +32,7 @@ Apache's download page currently lists Maven 3.9.16 as the recommended release a
 - Parses Surefire JUnit XML reports.
 - Parses Failsafe JUnit XML reports.
 - Parses Checkstyle XML reports.
+- Parses SpotBugs XML reports.
 - Maps failures back to Maven modules.
 - Identifies Maven plugin and phase.
 - Generates a minimal Maven reproduction command.
