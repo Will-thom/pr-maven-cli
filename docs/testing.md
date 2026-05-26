@@ -57,6 +57,7 @@ Coverage includes:
 - Maven Enforcer log parsing;
 - JaCoCo threshold log parsing;
 - report-to-module mapping;
+- slash-separated path normalization for JSON output;
 - reproduction command generation;
 - JSON output contract;
 - text output snapshots;

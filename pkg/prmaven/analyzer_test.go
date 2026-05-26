@@ -539,6 +539,32 @@ func TestWriteJSONProducesStableContract(t *testing.T) {
 	}
 }
 
+func TestWriteJSONUsesSlashSeparatedPaths(t *testing.T) {
+	report, err := Analyze(Options{ProjectDir: "testdata/nested-module-project"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var output bytes.Buffer
+	if err := WriteJSON(&output, report); err != nil {
+		t.Fatal(err)
+	}
+
+	text := output.String()
+	for _, expected := range []string{
+		`"path": "platform/service-core"`,
+		`"modulePath": "platform/service-core"`,
+		`"reportPath": "platform/service-core/target/surefire-reports/TEST-dev.prmaven.demo.NestedPaymentTest.xml"`,
+	} {
+		if !strings.Contains(text, expected) {
+			t.Fatalf("JSON output missing %q\n%s", expected, text)
+		}
+	}
+	if strings.Contains(text, `platform\\service-core`) {
+		t.Fatalf("JSON output contains Windows separators\n%s", text)
+	}
+}
+
 func TestAnalyzeMissingProjectReturnsError(t *testing.T) {
 	_, err := Analyze(Options{ProjectDir: "testdata/does-not-exist"})
 	if err == nil {

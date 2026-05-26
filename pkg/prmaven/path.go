@@ -23,6 +23,7 @@ func slashPath(path string) string {
 	if path == "" || path == "." {
 		return "."
 	}
+	path = strings.ReplaceAll(path, "\\", "/")
 	return filepath.ToSlash(filepath.Clean(path))
 }
 
