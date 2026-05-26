@@ -1,0 +1,12 @@
+[INFO] Scanning for projects...
+[INFO]
+[INFO] ------------------< dev.prmaven.fixtures:service-core >------------------
+[INFO] Building service-core 1.0.0
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- maven-enforcer-plugin:3.5.0:enforce (require-maven-baseline) @ service-core ---
+[ERROR] Rule 0: org.apache.maven.enforcer.rules.version.RequireMavenVersion failed with message:
+[ERROR] Detected Maven Version: 3.8.8 is not in the allowed range [3.9.0,).
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-enforcer-plugin:3.5.0:enforce (require-maven-baseline) on project service-core: Some Enforcer rules have failed. Look above for specific messages explaining why the rule failed.
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE

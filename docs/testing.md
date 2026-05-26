@@ -54,6 +54,7 @@ Coverage includes:
 - Failsafe report parsing;
 - Checkstyle report parsing;
 - SpotBugs report parsing;
+- Maven Enforcer log parsing;
 - report-to-module mapping;
 - reproduction command generation;
 - JSON output contract;
@@ -80,8 +81,9 @@ Fixtures live under `demo/`.
 - `demo/no-failure`: Maven aggregator with passing Surefire report output.
 - `pkg/prmaven/testdata/checkstyle-project`: Maven aggregator with a sanitized Checkstyle report fixture.
 - `pkg/prmaven/testdata/spotbugs-project`: Maven aggregator with a sanitized SpotBugs report fixture.
+- `pkg/prmaven/testdata/enforcer-project`: Maven aggregator with a sanitized Maven Enforcer log fixture.
 
-The `target/*-reports` directories are intentionally versioned because they are stable test fixtures, not local build output.
+The `target/*-reports` directories and selected `target/*.log` files are intentionally versioned because they are stable test fixtures, not local build output.
 
 ### Golden Files
 

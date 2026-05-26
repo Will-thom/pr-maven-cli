@@ -25,7 +25,7 @@ func WriteText(w io.Writer, report Report) error {
 		return err
 	}
 	if len(report.Findings) == 0 {
-		_, err := fmt.Fprintln(w, "No Maven test or quality failures found in Surefire, Failsafe, Checkstyle, or SpotBugs reports.")
+		_, err := fmt.Fprintln(w, "No Maven test or quality failures found in Surefire, Failsafe, Checkstyle, SpotBugs, or Maven Enforcer reports.")
 		return err
 	}
 
@@ -75,6 +75,15 @@ func findingContextLine(finding Finding) string {
 	testName := strings.TrimSpace(finding.TestName)
 	if className == "" && testName == "" {
 		return ""
+	}
+	if finding.SourceReportFormat == "maven-log" {
+		if className == "" {
+			return "Log: " + testName
+		}
+		if testName == "" {
+			return "Log: " + className
+		}
+		return "Log: " + className + " (" + testName + ")"
 	}
 	if finding.SourceReportFormat != "junit-xml" {
 		if className == "" {
