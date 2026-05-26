@@ -7,6 +7,7 @@ PR Maven CLI is founder-led.
 - William Thomaz, GitHub: [@Will-thom](https://github.com/Will-thom)
 - Role: Founder and Principal Maintainer
 - Scope: product direction, roadmap, releases, merge policy, maintainer access, and final project decisions.
+- Repository-wide code owner: `@Will-thom`, through `.github/CODEOWNERS`.
 
 ## Merge Policy
 
@@ -22,6 +23,8 @@ External contributors are welcome to open issues and pull requests. A maintainer
 - JSON and CLI compatibility.
 
 The default branch is `main`. It should stay protected and use the `All CI checks` status as the required CI gate.
+
+GitHub repository permissions should keep merge rights limited to users with write, maintain, or admin access. External contributors can propose changes through issues and pull requests, but they should not have merge access.
 
 ## Maintainer Path
 

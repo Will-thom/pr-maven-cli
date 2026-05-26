@@ -40,6 +40,8 @@ Jobs:
 - `CodeQL`: static analysis for Go.
 - `Dependency review`: reviews dependency changes on pull requests.
 
+`Dependency review` is advisory while the repository dependency graph is unavailable. It remains visible in the Security workflow, but the Stage 1 protected merge gate is `All CI checks`.
+
 ## Contributor Acknowledgement Workflow
 
 File: `.github/workflows/thank-contributor.yml`
