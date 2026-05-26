@@ -84,6 +84,41 @@ func TestAnalyzeNoFailureDemoProject(t *testing.T) {
 	}
 }
 
+func TestAnalyzeNestedModuleProject(t *testing.T) {
+	report, err := Analyze(Options{ProjectDir: "testdata/nested-module-project"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if report.Summary.ModuleCount != 3 {
+		t.Fatalf("module count = %d, want 3", report.Summary.ModuleCount)
+	}
+	if report.Summary.ReportCount != 1 {
+		t.Fatalf("report count = %d, want 1", report.Summary.ReportCount)
+	}
+	if report.Summary.FindingCount != 1 {
+		t.Fatalf("finding count = %d, want 1", report.Summary.FindingCount)
+	}
+
+	assertModulePath(t, report.Modules, ".")
+	assertModulePath(t, report.Modules, "platform")
+	assertModulePath(t, report.Modules, "platform/service-core")
+
+	finding := report.Findings[0]
+	if finding.Module != "service-core" {
+		t.Fatalf("module = %q, want service-core", finding.Module)
+	}
+	if finding.ModulePath != "platform/service-core" {
+		t.Fatalf("module path = %q, want platform/service-core", finding.ModulePath)
+	}
+	if finding.ReportPath != "platform/service-core/target/surefire-reports/TEST-dev.prmaven.demo.NestedPaymentTest.xml" {
+		t.Fatalf("report path = %q", finding.ReportPath)
+	}
+	if finding.ReproduceCommand != "mvn -pl platform/service-core -am -Dtest=NestedPaymentTest test" {
+		t.Fatalf("reproduce command = %q", finding.ReproduceCommand)
+	}
+}
+
 func TestAnalyzeCheckstyleReport(t *testing.T) {
 	report, err := Analyze(Options{ProjectDir: "testdata/checkstyle-project"})
 	if err != nil {
@@ -531,4 +566,15 @@ func assertReasonsContain(t *testing.T, reasons []string, expected string) {
 		}
 	}
 	t.Fatalf("confidence reasons missing %q in %#v", expected, reasons)
+}
+
+func assertModulePath(t *testing.T, modules []Module, expected string) {
+	t.Helper()
+
+	for _, module := range modules {
+		if module.Path == expected {
+			return
+		}
+	}
+	t.Fatalf("module path %q missing in %#v", expected, modules)
 }
