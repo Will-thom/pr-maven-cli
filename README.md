@@ -45,6 +45,8 @@ go test ./...
 go install ./cmd/prmaven
 ```
 
+For release artifacts, local builds, `PATH` setup, and Windows notes, read [Installation](docs/installation.md).
+
 ## Quick Start
 
 Run against the included demo:
@@ -79,6 +81,8 @@ Run against a real Maven workspace after CI/test artifacts exist:
 ```bash
 prmaven fails -project /path/to/maven/repo
 ```
+
+For flags, exit codes, CI patterns, and real-workspace usage, read the [Usage guide](docs/usage.md).
 
 ## CLI Commands
 
@@ -128,6 +132,8 @@ The public contract is centered on:
 
 These structures are intentionally simple so other tools can consume the analyzer without depending on the CLI.
 
+A runnable library example lives in [examples/library](examples/library).
+
 ## Demo Project
 
 The demo fixture lives at:
@@ -165,6 +171,9 @@ This is useful for:
 
 - [Manifesto](MANIFESTO.md)
 - [Roadmap](ROADMAP.md)
+- [Installation](docs/installation.md)
+- [Usage guide](docs/usage.md)
+- [Examples](examples/README.md)
 - [Contributing](CONTRIBUTING.md)
 - [Testing](docs/testing.md)
 - [CI/CD](docs/ci.md)
