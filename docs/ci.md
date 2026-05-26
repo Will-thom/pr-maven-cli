@@ -95,4 +95,12 @@ On Windows PowerShell:
 
 ## Branch Protection Recommendation
 
-When branch protection is enabled, use `All CI checks` as the required CI status. Keep security checks visible, but avoid making scheduled security tooling a blocker for focused contributor PRs until the project has more maintainers.
+The `main` branch should be protected.
+
+Recommended required status:
+
+- `All CI checks`
+
+Keep security checks visible, but avoid making scheduled security tooling a blocker for focused contributor PRs until the project has more maintainers.
+
+Only users with maintainer-level repository permissions should merge pull requests. See [MAINTAINERS.md](../MAINTAINERS.md).

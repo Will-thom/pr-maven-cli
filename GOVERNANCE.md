@@ -4,6 +4,10 @@ PR Maven CLI is founded by William Thomaz.
 
 The project is open to contributors and future maintainers. Maintainer rights should be granted based on sustained, high-quality contributions and respectful collaboration.
 
+The current principal maintainer is William Thomaz, GitHub: [@Will-thom](https://github.com/Will-thom).
+
+Maintainer details live in [MAINTAINERS.md](MAINTAINERS.md).
+
 ## Founder Responsibilities
 
 - Define product direction.
@@ -19,6 +23,7 @@ The project is open to contributors and future maintainers. Maintainer rights sh
 - Improve contributor onboarding.
 - Protect stable CLI and JSON contracts.
 - Prefer tested, incremental changes.
+- Merge only changes that match the roadmap stage, pass the required CI gate, and preserve the project scope.
 
 ## Contributor Path
 

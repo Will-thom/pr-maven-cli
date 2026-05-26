@@ -170,6 +170,7 @@ This is useful for:
 - [CI/CD](docs/ci.md)
 - [Release process](docs/release.md)
 - [Governance](GOVERNANCE.md)
+- [Maintainers](MAINTAINERS.md)
 - [Security](SECURITY.md)
 
 ## Contributing
