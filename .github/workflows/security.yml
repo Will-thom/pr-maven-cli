@@ -37,6 +37,7 @@ jobs:
 
   codeql:
     name: CodeQL
+    if: github.event.repository.private == false
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
