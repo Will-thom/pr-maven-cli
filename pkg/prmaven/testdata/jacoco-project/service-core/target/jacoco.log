@@ -1,0 +1,11 @@
+[INFO] Scanning for projects...
+[INFO]
+[INFO] ------------------< dev.prmaven.fixtures:service-core >------------------
+[INFO] Building service-core 1.0.0
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- jacoco-maven-plugin:0.8.12:check (jacoco-check) @ service-core ---
+[WARNING] Rule violated for bundle service-core: instructions covered ratio is 0.76, but expected minimum is 0.80
+[ERROR] Failed to execute goal org.jacoco:jacoco-maven-plugin:0.8.12:check (jacoco-check) on project service-core: Coverage checks have not been met. See log for details.
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE

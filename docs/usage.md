@@ -112,6 +112,7 @@ target/checkstyle-result.xml
 target/spotbugsXml.xml
 target/spotbugs.xml
 target/maven-enforcer.log
+target/jacoco.log
 target/maven.log
 ```
 
