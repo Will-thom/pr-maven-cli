@@ -1,0 +1,5 @@
+<testsuite name="dev.prmaven.demo.NestedPaymentTest" tests="1" failures="1" errors="0" skipped="0">
+  <testcase classname="dev.prmaven.demo.NestedPaymentTest" name="shouldMapNestedModule">
+    <failure type="java.lang.AssertionError" message="expected nested module mapping" />
+  </testcase>
+</testsuite>

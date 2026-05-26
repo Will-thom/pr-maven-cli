@@ -84,6 +84,7 @@ Fixtures live under `demo/`.
 - `pkg/prmaven/testdata/spotbugs-project`: Maven aggregator with a sanitized SpotBugs report fixture.
 - `pkg/prmaven/testdata/enforcer-project`: Maven aggregator with a sanitized Maven Enforcer log fixture.
 - `pkg/prmaven/testdata/jacoco-project`: Maven aggregator with a sanitized JaCoCo threshold log fixture.
+- `pkg/prmaven/testdata/nested-module-project`: Maven aggregator with a nested module and Surefire report fixture.
 
 The `target/*-reports` directories and selected `target/*.log` files are intentionally versioned because they are stable test fixtures, not local build output.
 
