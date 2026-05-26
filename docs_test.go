@@ -10,6 +10,7 @@ func TestDocumentationCoversInstallationUsageAndExamples(t *testing.T) {
 	files := map[string]string{
 		"README.md":                mustReadFile(t, "README.md"),
 		"docs/installation.md":     mustReadFile(t, "docs/installation.md"),
+		"docs/integrations.md":     mustReadFile(t, "docs/integrations.md"),
 		"docs/permissions.md":      mustReadFile(t, "docs/permissions.md"),
 		"docs/usage.md":            mustReadFile(t, "docs/usage.md"),
 		"examples/README.md":       mustReadFile(t, "examples/README.md"),
@@ -19,8 +20,11 @@ func TestDocumentationCoversInstallationUsageAndExamples(t *testing.T) {
 	assertContains(t, files["README.md"], "[Installation](docs/installation.md)")
 	assertContains(t, files["README.md"], "[Usage guide](docs/usage.md)")
 	assertContains(t, files["README.md"], "[Examples](examples/README.md)")
+	assertContains(t, files["README.md"], "[Integrations](docs/integrations.md)")
 	assertContains(t, files["README.md"], "[Permission posture](docs/permissions.md)")
 	assertContains(t, files["docs/installation.md"], "go install ./cmd/prmaven")
+	assertContains(t, files["docs/integrations.md"], "No native GitHub API adapter yet.")
+	assertContains(t, files["docs/integrations.md"], "GitHub is the only platform with official project automation and example coverage today")
 	assertContains(t, files["docs/permissions.md"], "Do not switch it to private if that would disable branch protection or repository rules.")
 	assertContains(t, files["docs/permissions.md"], "All CI checks")
 	assertContains(t, files["docs/installation.md"], "prmaven version")

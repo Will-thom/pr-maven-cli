@@ -47,6 +47,7 @@ Acceptance criteria:
 - Release tags produce Linux, macOS, and Windows packages with checksums.
 - Security automation runs CodeQL, govulncheck, and dependency review.
 - No network or external service is required for core functionality.
+- GitHub is the only first-party platform with project automation and usage examples; no native provider API adapter ships in Stage 1.
 - Stage 2 and Stage 3 issues exist in GitHub with contributor-friendly acceptance criteria.
 
 Expected confidence: high.

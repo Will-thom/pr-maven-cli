@@ -16,6 +16,8 @@ Stage 1 MVP.
 
 The current release line focuses on deterministic local analysis of Maven report artifacts. It does not require GitHub tokens, CI API access, AI providers, telemetry, or external services.
 
+Stage 1 does not include a native GitHub or GitLab API adapter. GitHub is currently the only platform with first-party project automation and a copyable CI example, while the CLI itself remains provider-agnostic. See [Integrations](docs/integrations.md).
+
 Target Maven baseline:
 
 - Maven 3.9.x.
@@ -35,6 +37,7 @@ Apache's download page currently lists Maven 3.9.16 as the recommended release a
 - Emits human-readable text.
 - Emits stable JSON for CI and agent usage.
 - Provides a versioned demo project with Maven report fixtures.
+- Provides GitHub Actions examples, without requiring GitHub API access at runtime.
 
 ## Install From Source
 
@@ -174,6 +177,7 @@ This is useful for:
 - [Installation](docs/installation.md)
 - [Usage guide](docs/usage.md)
 - [Examples](examples/README.md)
+- [Integrations](docs/integrations.md)
 - [Contributing](CONTRIBUTING.md)
 - [Permission posture](docs/permissions.md)
 - [Testing](docs/testing.md)

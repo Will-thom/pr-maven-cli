@@ -65,6 +65,12 @@ go run ./cmd/prmaven why -project demo/multi-module-failure -format json
 
 The JSON contract is designed for CI systems, bots, and coding agents. It includes `summary`, `modules`, and `findings`.
 
+## Provider Integrations
+
+Stage 1 has no native GitHub or GitLab API adapter. The CLI does not need provider tokens and does not call remote PR, check-run, issue, or merge request APIs.
+
+GitHub is the only platform with first-party project automation and a copyable CI example today. For the full integration scope and planned native adapters, read [integrations.md](integrations.md).
+
 ## Demo: No-Failure Fixture
 
 ```bash
