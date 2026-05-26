@@ -104,10 +104,54 @@ type reportFile struct {
 	kind       string
 }
 
+type reportParser interface {
+	Kind() string
+	FindReports(projectRoot string) ([]reportFile, error)
+	ParseReport(projectRoot string, moduleByPath map[string]Module, reportFile reportFile) ([]Finding, error)
+}
+
+type registeredReportParser struct {
+	kind  string
+	find  func(projectRoot string) ([]reportFile, error)
+	parse func(projectRoot string, moduleByPath map[string]Module, reportFile reportFile) ([]Finding, error)
+}
+
+func (parser registeredReportParser) Kind() string {
+	return parser.kind
+}
+
+func (parser registeredReportParser) FindReports(projectRoot string) ([]reportFile, error) {
+	return parser.find(projectRoot)
+}
+
+func (parser registeredReportParser) ParseReport(projectRoot string, moduleByPath map[string]Module, reportFile reportFile) ([]Finding, error) {
+	return parser.parse(projectRoot, moduleByPath, reportFile)
+}
+
 var enforcerRuleFailurePattern = regexp.MustCompile(`(?i)^Rule\s+\d+:\s+(.+?)\s+failed with message:\s*(.*)$`)
 var enforcerExecutionPattern = regexp.MustCompile(`maven-enforcer-plugin:[^\s]+:enforce\s+\(([^)]+)\)`)
 var jacocoThresholdPattern = regexp.MustCompile(`(?i)^Rule violated for (.+?):\s+(.+?) covered ratio is ([0-9.]+), but expected minimum is ([0-9.]+)\.?$`)
 var jacocoExecutionPattern = regexp.MustCompile(`jacoco-maven-plugin:[^\s]+:check\s+\(([^)]+)\)`)
+
+var reportParsers = []reportParser{
+	newJUnitXMLParser("surefire", "surefire-reports"),
+	newJUnitXMLParser("failsafe", "failsafe-reports"),
+	newNamedTargetParser("checkstyle", map[string]bool{
+		"checkstyle-result.xml": true,
+	}, parseCheckstyleReport),
+	newNamedTargetParser("spotbugs", map[string]bool{
+		"spotbugs.xml":    true,
+		"spotbugsXml.xml": true,
+	}, parseSpotBugsReport),
+	newPluginLogParser("enforcer", map[string]bool{
+		"maven-enforcer.log": true,
+		"maven.log":          true,
+	}, "maven-enforcer-plugin", parseEnforcerLogReport),
+	newPluginLogParser("jacoco", map[string]bool{
+		"jacoco.log": true,
+		"maven.log":  true,
+	}, "jacoco-maven-plugin", parseJaCoCoLogReport),
+}
 
 func Analyze(options Options) (Report, error) {
 	projectRoot := options.ProjectDir
@@ -159,38 +203,60 @@ func Analyze(options Options) (Report, error) {
 }
 
 func findReportFiles(projectRoot string) ([]reportFile, error) {
-	junitReports, err := findJUnitReports(projectRoot)
-	if err != nil {
-		return nil, err
+	var reports []reportFile
+	for _, parser := range reportParsers {
+		parserReports, err := parser.FindReports(projectRoot)
+		if err != nil {
+			return nil, err
+		}
+		reports = append(reports, parserReports...)
 	}
-	checkstyleReports, err := findCheckstyleReports(projectRoot)
-	if err != nil {
-		return nil, err
-	}
-	spotbugsReports, err := findSpotBugsReports(projectRoot)
-	if err != nil {
-		return nil, err
-	}
-	enforcerReports, err := findEnforcerLogReports(projectRoot)
-	if err != nil {
-		return nil, err
-	}
-	jacocoReports, err := findJaCoCoLogReports(projectRoot)
-	if err != nil {
-		return nil, err
-	}
-
-	reports := append(junitReports, checkstyleReports...)
-	reports = append(reports, spotbugsReports...)
-	reports = append(reports, enforcerReports...)
-	reports = append(reports, jacocoReports...)
 	sort.Slice(reports, func(i, j int) bool {
 		return reports[i].relPath < reports[j].relPath
 	})
 	return reports, nil
 }
 
-func findJUnitReports(projectRoot string) ([]reportFile, error) {
+func newJUnitXMLParser(kind, reportDir string) reportParser {
+	return registeredReportParser{
+		kind: kind,
+		find: func(projectRoot string) ([]reportFile, error) {
+			return findJUnitReports(projectRoot, kind, reportDir)
+		},
+		parse: parseJUnitReport,
+	}
+}
+
+func newNamedTargetParser(
+	kind string,
+	names map[string]bool,
+	parse func(projectRoot string, moduleByPath map[string]Module, reportFile reportFile) ([]Finding, error),
+) reportParser {
+	return registeredReportParser{
+		kind: kind,
+		find: func(projectRoot string) ([]reportFile, error) {
+			return findNamedTargetReports(projectRoot, kind, names)
+		},
+		parse: parse,
+	}
+}
+
+func newPluginLogParser(
+	kind string,
+	names map[string]bool,
+	plugin string,
+	parse func(projectRoot string, moduleByPath map[string]Module, reportFile reportFile) ([]Finding, error),
+) reportParser {
+	return registeredReportParser{
+		kind: kind,
+		find: func(projectRoot string) ([]reportFile, error) {
+			return findPluginLogReports(projectRoot, kind, names, plugin)
+		},
+		parse: parse,
+	}
+}
+
+func findJUnitReports(projectRoot, kind, reportDirName string) ([]reportFile, error) {
 	var reports []reportFile
 
 	err := filepath.WalkDir(projectRoot, func(path string, entry fs.DirEntry, walkErr error) error {
@@ -209,13 +275,7 @@ func findJUnitReports(projectRoot string) ([]reportFile, error) {
 		}
 
 		reportDir := filepath.Base(filepath.Dir(path))
-		kind := ""
-		switch reportDir {
-		case "surefire-reports":
-			kind = "surefire"
-		case "failsafe-reports":
-			kind = "failsafe"
-		default:
+		if reportDir != reportDirName {
 			return nil
 		}
 
@@ -237,35 +297,6 @@ func findJUnitReports(projectRoot string) ([]reportFile, error) {
 		return reports[i].relPath < reports[j].relPath
 	})
 	return reports, nil
-}
-
-func findCheckstyleReports(projectRoot string) ([]reportFile, error) {
-	return findNamedTargetReports(projectRoot, "checkstyle", map[string]bool{
-		"checkstyle-result.xml": true,
-	})
-}
-
-func findSpotBugsReports(projectRoot string) ([]reportFile, error) {
-	return findNamedTargetReports(projectRoot, "spotbugs", map[string]bool{
-		"spotbugs.xml":    true,
-		"spotbugsXml.xml": true,
-	})
-}
-
-func findEnforcerLogReports(projectRoot string) ([]reportFile, error) {
-	names := map[string]bool{
-		"maven-enforcer.log": true,
-		"maven.log":          true,
-	}
-	return findPluginLogReports(projectRoot, "enforcer", names, "maven-enforcer-plugin")
-}
-
-func findJaCoCoLogReports(projectRoot string) ([]reportFile, error) {
-	names := map[string]bool{
-		"jacoco.log": true,
-		"maven.log":  true,
-	}
-	return findPluginLogReports(projectRoot, "jacoco", names, "jacoco-maven-plugin")
 }
 
 func findNamedTargetReports(projectRoot, kind string, names map[string]bool) ([]reportFile, error) {
@@ -353,18 +384,12 @@ func findPluginLogReports(projectRoot, kind string, names map[string]bool, plugi
 }
 
 func parseReport(projectRoot string, moduleByPath map[string]Module, reportFile reportFile) ([]Finding, error) {
-	switch reportFile.kind {
-	case "checkstyle":
-		return parseCheckstyleReport(projectRoot, moduleByPath, reportFile)
-	case "spotbugs":
-		return parseSpotBugsReport(projectRoot, moduleByPath, reportFile)
-	case "enforcer":
-		return parseEnforcerLogReport(moduleByPath, reportFile)
-	case "jacoco":
-		return parseJaCoCoLogReport(moduleByPath, reportFile)
-	default:
-		return parseJUnitReport(projectRoot, moduleByPath, reportFile)
+	for _, parser := range reportParsers {
+		if parser.Kind() == reportFile.kind {
+			return parser.ParseReport(projectRoot, moduleByPath, reportFile)
+		}
 	}
+	return nil, fmt.Errorf("no parser registered for report kind %q", reportFile.kind)
 }
 
 func parseJUnitReport(projectRoot string, moduleByPath map[string]Module, reportFile reportFile) ([]Finding, error) {
@@ -459,7 +484,7 @@ func parseSpotBugsReport(projectRoot string, moduleByPath map[string]Module, rep
 	return findings, nil
 }
 
-func parseEnforcerLogReport(moduleByPath map[string]Module, reportFile reportFile) ([]Finding, error) {
+func parseEnforcerLogReport(_ string, moduleByPath map[string]Module, reportFile reportFile) ([]Finding, error) {
 	data, err := os.ReadFile(reportFile.absPath)
 	if err != nil {
 		return nil, fmt.Errorf("read report %s: %w", reportFile.relPath, err)
@@ -480,7 +505,7 @@ func parseEnforcerLogReport(moduleByPath map[string]Module, reportFile reportFil
 	return findings, nil
 }
 
-func parseJaCoCoLogReport(moduleByPath map[string]Module, reportFile reportFile) ([]Finding, error) {
+func parseJaCoCoLogReport(_ string, moduleByPath map[string]Module, reportFile reportFile) ([]Finding, error) {
 	data, err := os.ReadFile(reportFile.absPath)
 	if err != nil {
 		return nil, fmt.Errorf("read report %s: %w", reportFile.relPath, err)

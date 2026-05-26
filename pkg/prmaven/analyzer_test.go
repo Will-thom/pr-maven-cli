@@ -9,6 +9,22 @@ import (
 	"testing"
 )
 
+func TestReportParserRegistryIncludesSupportedKinds(t *testing.T) {
+	got := map[string]bool{}
+	for _, parser := range reportParsers {
+		if got[parser.Kind()] {
+			t.Fatalf("duplicate parser kind registered: %s", parser.Kind())
+		}
+		got[parser.Kind()] = true
+	}
+
+	for _, kind := range []string{"surefire", "failsafe", "checkstyle", "spotbugs", "enforcer", "jacoco"} {
+		if !got[kind] {
+			t.Fatalf("parser kind %q is not registered; got %#v", kind, got)
+		}
+	}
+}
+
 func TestAnalyzeDemoProject(t *testing.T) {
 	report, err := Analyze(Options{ProjectDir: "../../demo/multi-module-failure"})
 	if err != nil {
