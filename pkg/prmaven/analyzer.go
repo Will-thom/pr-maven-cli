@@ -55,6 +55,32 @@ type checkstyleError struct {
 	Source   string `xml:"source,attr"`
 }
 
+type spotbugsReport struct {
+	Bugs []spotbugsBug `xml:"BugInstance"`
+}
+
+type spotbugsBug struct {
+	Type         string             `xml:"type,attr"`
+	Category     string             `xml:"category,attr"`
+	ShortMessage string             `xml:"ShortMessage"`
+	LongMessage  string             `xml:"LongMessage"`
+	Class        spotbugsClass      `xml:"Class"`
+	SourceLine   spotbugsSourceLine `xml:"SourceLine"`
+}
+
+type spotbugsClass struct {
+	ClassName  string             `xml:"classname,attr"`
+	SourceLine spotbugsSourceLine `xml:"SourceLine"`
+}
+
+type spotbugsSourceLine struct {
+	ClassName  string `xml:"classname,attr"`
+	SourceFile string `xml:"sourcefile,attr"`
+	SourcePath string `xml:"sourcepath,attr"`
+	Start      string `xml:"start,attr"`
+	End        string `xml:"end,attr"`
+}
+
 type reportFile struct {
 	absPath    string
 	relPath    string
@@ -120,8 +146,13 @@ func findReportFiles(projectRoot string) ([]reportFile, error) {
 	if err != nil {
 		return nil, err
 	}
+	spotbugsReports, err := findSpotBugsReports(projectRoot)
+	if err != nil {
+		return nil, err
+	}
 
 	reports := append(junitReports, checkstyleReports...)
+	reports = append(reports, spotbugsReports...)
 	sort.Slice(reports, func(i, j int) bool {
 		return reports[i].relPath < reports[j].relPath
 	})
@@ -178,6 +209,19 @@ func findJUnitReports(projectRoot string) ([]reportFile, error) {
 }
 
 func findCheckstyleReports(projectRoot string) ([]reportFile, error) {
+	return findNamedTargetReports(projectRoot, "checkstyle", map[string]bool{
+		"checkstyle-result.xml": true,
+	})
+}
+
+func findSpotBugsReports(projectRoot string) ([]reportFile, error) {
+	return findNamedTargetReports(projectRoot, "spotbugs", map[string]bool{
+		"spotbugs.xml":    true,
+		"spotbugsXml.xml": true,
+	})
+}
+
+func findNamedTargetReports(projectRoot, kind string, names map[string]bool) ([]reportFile, error) {
 	var reports []reportFile
 
 	err := filepath.WalkDir(projectRoot, func(path string, entry fs.DirEntry, walkErr error) error {
@@ -191,7 +235,7 @@ func findCheckstyleReports(projectRoot string) ([]reportFile, error) {
 			}
 			return nil
 		}
-		if entry.Name() != "checkstyle-result.xml" || !isInsideTarget(path) {
+		if !names[entry.Name()] || !isInsideTarget(path) {
 			return nil
 		}
 
@@ -201,7 +245,7 @@ func findCheckstyleReports(projectRoot string) ([]reportFile, error) {
 			absPath:    path,
 			relPath:    slashPath(rel),
 			modulePath: slashPath(modulePath),
-			kind:       "checkstyle",
+			kind:       kind,
 		})
 		return nil
 	})
@@ -219,6 +263,8 @@ func parseReport(projectRoot string, moduleByPath map[string]Module, reportFile 
 	switch reportFile.kind {
 	case "checkstyle":
 		return parseCheckstyleReport(projectRoot, moduleByPath, reportFile)
+	case "spotbugs":
+		return parseSpotBugsReport(projectRoot, moduleByPath, reportFile)
 	default:
 		return parseJUnitReport(projectRoot, moduleByPath, reportFile)
 	}
@@ -290,6 +336,32 @@ func parseCheckstyleReport(projectRoot string, moduleByPath map[string]Module, r
 	return findings, nil
 }
 
+func parseSpotBugsReport(projectRoot string, moduleByPath map[string]Module, reportFile reportFile) ([]Finding, error) {
+	data, err := os.ReadFile(reportFile.absPath)
+	if err != nil {
+		return nil, fmt.Errorf("read report %s: %w", reportFile.relPath, err)
+	}
+
+	var report spotbugsReport
+	if err := xml.Unmarshal(data, &report); err != nil {
+		return nil, fmt.Errorf("parse report %s: %w", reportFile.relPath, err)
+	}
+
+	module := moduleByPath[reportFile.modulePath]
+	if module.Path == "" {
+		module = Module{
+			Name: moduleNameFromPath(filepath.FromSlash(reportFile.modulePath)),
+			Path: reportFile.modulePath,
+		}
+	}
+
+	var findings []Finding
+	for _, bug := range report.Bugs {
+		findings = append(findings, buildSpotBugsFinding(module, reportFile, projectRoot, bug))
+	}
+	return findings, nil
+}
+
 func buildFinding(module Module, reportFile reportFile, testCase junitCase, problem junitProblem, kind string) Finding {
 	className := strings.TrimSpace(testCase.ClassName)
 	if className == "" {
@@ -342,6 +414,32 @@ func buildCheckstyleFinding(module Module, reportFile reportFile, sourcePath str
 		Confidence:         "high",
 		ConfidenceReasons:  checkstyleConfidenceReasons(module.Path, sourcePath),
 		SourceReportFormat: "checkstyle-xml",
+	}
+}
+
+func buildSpotBugsFinding(module Module, reportFile reportFile, projectRoot string, bug spotbugsBug) Finding {
+	sourceLine := spotbugsBestSourceLine(bug)
+	sourcePath := spotbugsSourcePath(projectRoot, sourceLine, bug.Class.ClassName)
+	location := spotbugsLocation(sourceLine.Start, sourceLine.End)
+	message := oneLine(firstNonEmpty(bug.LongMessage, bug.ShortMessage, bug.Type))
+
+	return Finding{
+		ID:                 findingID(module.Path, sourcePath, location, bug.Type),
+		Module:             module.Name,
+		ModulePath:         module.Path,
+		ReportPath:         reportFile.relPath,
+		ReportKind:         reportFile.kind,
+		MavenPlugin:        pluginForReportKind(reportFile.kind),
+		MavenPhase:         phaseForReportKind(reportFile.kind),
+		TestClass:          sourcePath,
+		TestName:           location,
+		FailureKind:        "bug",
+		FailureType:        spotbugsFailureType(bug),
+		Message:            message,
+		ReproduceCommand:   reproduceCommand(reportFile.kind, module.Path, ""),
+		Confidence:         "high",
+		ConfidenceReasons:  spotbugsConfidenceReasons(module.Path, sourcePath, bug.Type),
+		SourceReportFormat: "spotbugs-xml",
 	}
 }
 
@@ -411,9 +509,56 @@ func checkstyleLocation(line, column string) string {
 	}
 }
 
+func spotbugsBestSourceLine(bug spotbugsBug) spotbugsSourceLine {
+	if bug.SourceLine.SourcePath != "" || bug.SourceLine.SourceFile != "" || bug.SourceLine.Start != "" {
+		return bug.SourceLine
+	}
+	return bug.Class.SourceLine
+}
+
+func spotbugsSourcePath(projectRoot string, sourceLine spotbugsSourceLine, className string) string {
+	sourcePath := firstNonEmpty(sourceLine.SourcePath, sourceLine.SourceFile)
+	if sourcePath == "" && className != "" {
+		sourcePath = strings.ReplaceAll(className, ".", "/") + ".java"
+	}
+	sourcePath = strings.TrimSpace(sourcePath)
+	if sourcePath == "" {
+		return "unknown"
+	}
+	if filepath.IsAbs(sourcePath) {
+		return slashPath(relativePath(projectRoot, sourcePath))
+	}
+	return slashPath(sourcePath)
+}
+
+func spotbugsLocation(start, end string) string {
+	start = strings.TrimSpace(start)
+	end = strings.TrimSpace(end)
+	switch {
+	case start != "" && end != "" && start != end:
+		return "lines " + start + "-" + end
+	case start != "":
+		return "line " + start
+	case end != "":
+		return "line " + end
+	default:
+		return "location unknown"
+	}
+}
+
+func spotbugsFailureType(bug spotbugsBug) string {
+	if bug.Category != "" && bug.Type != "" {
+		return bug.Category + "/" + bug.Type
+	}
+	return firstNonEmpty(bug.Type, bug.Category)
+}
+
 func pluginForReportKind(kind string) string {
 	if kind == "checkstyle" {
 		return "maven-checkstyle-plugin"
+	}
+	if kind == "spotbugs" {
+		return "spotbugs-maven-plugin"
 	}
 	if kind == "failsafe" {
 		return "maven-failsafe-plugin"
@@ -423,6 +568,9 @@ func pluginForReportKind(kind string) string {
 
 func phaseForReportKind(kind string) string {
 	if kind == "checkstyle" {
+		return "verify"
+	}
+	if kind == "spotbugs" {
 		return "verify"
 	}
 	if kind == "failsafe" {
@@ -439,6 +587,10 @@ func reproduceCommand(kind, modulePath, className string) string {
 	}
 	if kind == "checkstyle" {
 		parts = append(parts, "checkstyle:check")
+		return strings.Join(parts, " ")
+	}
+	if kind == "spotbugs" {
+		parts = append(parts, "spotbugs:check")
 		return strings.Join(parts, " ")
 	}
 	if kind == "failsafe" {
@@ -460,6 +612,18 @@ func confidenceReasons(kind, modulePath, className string) []string {
 	}
 	if className != "" {
 		reasons = append(reasons, "reproduction command targets test class "+simpleClassName(className))
+	}
+	return reasons
+}
+
+func spotbugsConfidenceReasons(modulePath, sourcePath, bugType string) []string {
+	reasons := []string{
+		"bug was found in a Maven SpotBugs XML report",
+		"report path maps to Maven module " + modulePath,
+		"SpotBugs source entry maps to " + sourcePath,
+	}
+	if bugType != "" {
+		reasons = append(reasons, "SpotBugs bug type is "+bugType)
 	}
 	return reasons
 }

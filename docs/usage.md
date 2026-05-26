@@ -109,6 +109,8 @@ The CLI scans module-level report folders such as:
 target/surefire-reports
 target/failsafe-reports
 target/checkstyle-result.xml
+target/spotbugsXml.xml
+target/spotbugs.xml
 ```
 
 ## CI Pattern

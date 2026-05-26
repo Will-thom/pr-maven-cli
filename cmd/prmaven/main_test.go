@@ -113,7 +113,7 @@ func TestCLIEndToEndNoFailure(t *testing.T) {
 	text := string(output)
 	for _, expected := range []string{
 		"Modules: 2 | Reports: 1 | Findings: 0",
-		"No Maven test or quality failures found in Surefire, Failsafe, or Checkstyle reports.",
+		"No Maven test or quality failures found in Surefire, Failsafe, Checkstyle, or SpotBugs reports.",
 	} {
 		if !strings.Contains(text, expected) {
 			t.Fatalf("CLI output missing %q\n%s", expected, text)

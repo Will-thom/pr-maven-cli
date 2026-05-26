@@ -53,6 +53,7 @@ Coverage includes:
 - Surefire report parsing;
 - Failsafe report parsing;
 - Checkstyle report parsing;
+- SpotBugs report parsing;
 - report-to-module mapping;
 - reproduction command generation;
 - JSON output contract;
@@ -78,6 +79,7 @@ Fixtures live under `demo/`.
 - `demo/multi-module-failure`: Maven aggregator with Surefire and Failsafe findings.
 - `demo/no-failure`: Maven aggregator with passing Surefire report output.
 - `pkg/prmaven/testdata/checkstyle-project`: Maven aggregator with a sanitized Checkstyle report fixture.
+- `pkg/prmaven/testdata/spotbugs-project`: Maven aggregator with a sanitized SpotBugs report fixture.
 
 The `target/*-reports` directories are intentionally versioned because they are stable test fixtures, not local build output.
 

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<BugCollection version="4.8.6">
+  <BugInstance type="NP_NULL_ON_SOME_PATH" category="CORRECTNESS" priority="2" rank="15">
+    <ShortMessage>Possible null pointer dereference</ShortMessage>
+    <LongMessage>Possible null pointer dereference of order in dev.prmaven.demo.OrderAnalyzer.analyze(Order)</LongMessage>
+    <Class classname="dev.prmaven.demo.OrderAnalyzer">
+      <SourceLine
+        classname="dev.prmaven.demo.OrderAnalyzer"
+        sourcefile="OrderAnalyzer.java"
+        sourcepath="service-core/src/main/java/dev/prmaven/demo/OrderAnalyzer.java"
+        start="42"
+        end="42" />
+    </Class>
+  </BugInstance>
+</BugCollection>
