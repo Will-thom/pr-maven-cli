@@ -167,6 +167,8 @@ This is useful for:
 - [Roadmap](ROADMAP.md)
 - [Contributing](CONTRIBUTING.md)
 - [Testing](docs/testing.md)
+- [CI/CD](docs/ci.md)
+- [Release process](docs/release.md)
 - [Governance](GOVERNANCE.md)
 - [Security](SECURITY.md)
 

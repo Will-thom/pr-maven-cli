@@ -31,6 +31,8 @@ The demo includes versioned Maven report fixtures under `demo/multi-module-failu
 
 For the full test strategy, including golden files, CLI end-to-end tests, race tests, and CI behavior, read [docs/testing.md](docs/testing.md).
 
+For the GitHub pipeline, release flow, and branch protection recommendation, read [docs/ci.md](docs/ci.md) and [docs/release.md](docs/release.md).
+
 ## Contribution Rules
 
 - Keep PRs focused.

@@ -30,6 +30,8 @@ Scope:
 - Golden tests for text output.
 - GitHub Actions CI for Linux, Windows, macOS, Go 1.22.x, and stable Go.
 - Race detector and coverage jobs.
+- Quality, security, build, smoke, and release workflows.
+- Dependabot maintenance for GitHub Actions and Go modules.
 - Public README, manifesto, contribution guide, license, roadmap, issue templates.
 - Repository visibility changed to public.
 
@@ -42,6 +44,8 @@ Acceptance criteria:
 - Text output gives module, plugin, phase, test, report path, confidence, and reproduction command.
 - Text output is protected by golden tests.
 - CI runs the Stage 1 suite across supported operating systems.
+- Release tags produce Linux, macOS, and Windows packages with checksums.
+- Security automation runs CodeQL, govulncheck, and dependency review.
 - No network or external service is required for core functionality.
 - Stage 2 and Stage 3 issues exist in GitHub with contributor-friendly acceptance criteria.
 

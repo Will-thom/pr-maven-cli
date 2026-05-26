@@ -9,7 +9,30 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PRMAVEN_MIN_COVERAGE: "70"
+
 jobs:
+  quality:
+    name: Quality gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: "stable"
+          cache: false
+
+      - name: Format, vet, and unit tests
+        run: sh scripts/quality.sh
+
   test:
     name: Go tests (${{ matrix.os }}, Go ${{ matrix.go-version }})
     runs-on: ${{ matrix.os }}
@@ -54,7 +77,7 @@ jobs:
         run: go test -race ./...
 
   coverage:
-    name: Coverage
+    name: Coverage gate
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -67,10 +90,108 @@ jobs:
           cache: false
 
       - name: Go coverage
-        run: PRMAVEN_COVERAGE=1 PRMAVEN_MIN_COVERAGE=70 sh scripts/test.sh
+        run: PRMAVEN_COVERAGE=1 sh scripts/test.sh
 
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v7
         with:
           name: coverage
           path: coverage.out
+
+  build:
+    name: Build (${{ matrix.goos }}/${{ matrix.goarch }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+          - goos: linux
+            goarch: arm64
+          - goos: darwin
+            goarch: amd64
+          - goos: darwin
+            goarch: arm64
+          - goos: windows
+            goarch: amd64
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: "stable"
+          cache: false
+
+      - name: Build binary
+        env:
+          CGO_ENABLED: "0"
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          set -eu
+          mkdir -p dist
+          binary="dist/prmaven-${GOOS}-${GOARCH}"
+          if [ "$GOOS" = "windows" ]; then
+            binary="${binary}.exe"
+          fi
+          go build -trimpath -ldflags="-s -w -X main.version=${GITHUB_SHA}" -o "$binary" ./cmd/prmaven
+
+      - name: Upload binary artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: prmaven-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: dist/*
+
+  smoke:
+    name: CLI smoke test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: "stable"
+          cache: false
+
+      - name: Build local binary
+        run: sh scripts/build.sh dist "$GITHUB_SHA"
+
+      - name: Exercise CLI behavior
+        run: |
+          set -euo pipefail
+          ./dist/prmaven version | grep "$GITHUB_SHA"
+          ./dist/prmaven fails -project demo/no-failure
+
+          set +e
+          output="$(./dist/prmaven fails -project demo/multi-module-failure 2>&1)"
+          status="$?"
+          set -e
+
+          printf '%s\n' "$output"
+          if [ "$status" -eq 0 ]; then
+            echo "Expected non-zero status when findings are present" >&2
+            exit 1
+          fi
+          printf '%s\n' "$output" | grep "Findings: 2"
+          printf '%s\n' "$output" | grep "maven-surefire-plugin"
+          printf '%s\n' "$output" | grep "maven-failsafe-plugin"
+
+  all-checks:
+    name: All CI checks
+    runs-on: ubuntu-latest
+    needs:
+      - quality
+      - test
+      - race
+      - coverage
+      - build
+      - smoke
+    steps:
+      - name: Report success
+        run: echo "All Stage 1 CI checks passed."
