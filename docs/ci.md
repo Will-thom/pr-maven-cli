@@ -79,6 +79,10 @@ The tag version is embedded in the CLI through:
 prmaven version
 ```
 
+The workflow defaults to `contents: read`. Only the release publishing job receives `contents: write`.
+
+Repository permission posture is documented in [permissions.md](permissions.md).
+
 ## Local Parity
 
 Before opening a PR, contributors should run:

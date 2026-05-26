@@ -175,6 +175,7 @@ This is useful for:
 - [Usage guide](docs/usage.md)
 - [Examples](examples/README.md)
 - [Contributing](CONTRIBUTING.md)
+- [Permission posture](docs/permissions.md)
 - [Testing](docs/testing.md)
 - [CI/CD](docs/ci.md)
 - [Release process](docs/release.md)
