@@ -24,6 +24,9 @@ function Invoke-Checked {
 if (-not $env:GOCACHE) {
     $env:GOCACHE = Join-Path (Get-Location) ".gocache"
 }
+if (-not $env:GOMODCACHE) {
+    $env:GOMODCACHE = Join-Path (Get-Location) ".gomodcache"
+}
 
 Invoke-Checked go test ./...
 

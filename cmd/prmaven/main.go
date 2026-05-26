@@ -9,6 +9,8 @@ import (
 	"github.com/Will-thom/pr-maven-cli/pkg/prmaven"
 )
 
+var version = "dev"
+
 func main() {
 	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr))
 }
@@ -34,11 +36,16 @@ func run(args []string, stdout, stderr io.Writer) int {
 	}
 
 	switch command {
-	case "fails", "why":
+	case "fails", "why", "version":
 	default:
 		fmt.Fprintf(stderr, "unknown command %q\n", command)
-		fmt.Fprintln(stderr, "available commands: fails, why")
+		fmt.Fprintln(stderr, "available commands: fails, why, version")
 		return 2
+	}
+
+	if command == "version" {
+		fmt.Fprintln(stdout, version)
+		return 0
 	}
 
 	report, err := prmaven.Analyze(prmaven.Options{ProjectDir: *projectDir})

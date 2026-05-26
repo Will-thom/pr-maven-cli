@@ -1,4 +1,7 @@
-.PHONY: test test-race coverage coverage-check ci
+.PHONY: quality test test-race coverage coverage-check build ci
+
+quality:
+	sh scripts/quality.sh
 
 test:
 	go test ./...
@@ -13,4 +16,7 @@ coverage:
 coverage-check:
 	PRMAVEN_COVERAGE=1 PRMAVEN_MIN_COVERAGE=70 sh scripts/test.sh
 
-ci: test test-race coverage-check
+build:
+	sh scripts/build.sh
+
+ci: quality test-race coverage-check build

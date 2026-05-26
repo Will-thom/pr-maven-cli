@@ -2,8 +2,11 @@ bin/
 coverage.out
 coverage.html
 dist/
+/prmaven
+/prmaven.exe
 *.test
 .gocache/
+.gomodcache/
 
 # Keep the demo reports versioned. They are fixture data for end-to-end tests.
 !demo/**/target/

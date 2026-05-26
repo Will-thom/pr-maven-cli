@@ -68,6 +68,22 @@ func TestRunReturnsUsageExitCode(t *testing.T) {
 	}
 }
 
+func TestRunVersion(t *testing.T) {
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+
+	code := run([]string{"version"}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("exit code = %d, want 0", code)
+	}
+	if strings.TrimSpace(stdout.String()) == "" {
+		t.Fatal("version output is empty")
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("stderr = %q, want empty", stderr.String())
+	}
+}
+
 func TestCLIEndToEndJSON(t *testing.T) {
 	command := exec.Command("go", "run", ".", "why", "-project", "../../demo/multi-module-failure", "-format", "json")
 	output, err := command.CombinedOutput()

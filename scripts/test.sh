@@ -1,6 +1,10 @@
 #!/usr/bin/env sh
 set -eu
 
+: "${GOCACHE:=$(pwd)/.gocache}"
+: "${GOMODCACHE:=$(pwd)/.gomodcache}"
+export GOCACHE GOMODCACHE
+
 go test ./...
 
 if [ "${PRMAVEN_RACE:-0}" = "1" ]; then
