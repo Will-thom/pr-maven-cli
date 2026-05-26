@@ -40,6 +40,8 @@ Jobs:
 - `CodeQL`: static analysis for Go.
 - `Dependency review`: reviews dependency changes on pull requests.
 
+`CodeQL` runs while the repository is public. During private stabilization phases, the job is skipped unless code scanning is enabled for the private repository in GitHub settings.
+
 `Dependency review` is advisory while the repository dependency graph is unavailable. It remains visible in the Security workflow, but the Stage 1 protected merge gate is `All CI checks`.
 
 ## Contributor Acknowledgement Workflow
