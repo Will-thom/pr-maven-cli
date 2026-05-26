@@ -1,0 +1,142 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://will-thom.github.io/pr-maven-cli/schema/prmaven-report.schema.json",
+  "title": "PR Maven CLI Report",
+  "description": "JSON report emitted by prmaven with Maven module, report, and finding context.",
+  "type": "object",
+  "required": ["projectRoot", "summary", "modules", "findings"],
+  "properties": {
+    "projectRoot": {
+      "type": "string",
+      "description": "Absolute path to the analyzed Maven workspace."
+    },
+    "summary": {
+      "$ref": "#/$defs/summary"
+    },
+    "modules": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/module"
+      }
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/finding"
+      }
+    }
+  },
+  "$defs": {
+    "summary": {
+      "type": "object",
+      "required": ["moduleCount", "reportCount", "findingCount"],
+      "properties": {
+        "moduleCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "reportCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "findingCount": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "module": {
+      "type": "object",
+      "required": ["name", "path", "pom"],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string",
+          "description": "Module path relative to projectRoot; root is '.'."
+        },
+        "pom": {
+          "type": "string",
+          "description": "Module pom.xml path relative to projectRoot."
+        }
+      }
+    },
+    "finding": {
+      "type": "object",
+      "required": [
+        "id",
+        "module",
+        "modulePath",
+        "reportPath",
+        "reportKind",
+        "mavenPlugin",
+        "mavenPhase",
+        "testClass",
+        "testName",
+        "failureKind",
+        "reproduceCommand",
+        "confidence",
+        "confidenceReasons",
+        "sourceReportFormat"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "module": {
+          "type": "string"
+        },
+        "modulePath": {
+          "type": "string"
+        },
+        "reportPath": {
+          "type": "string"
+        },
+        "reportKind": {
+          "type": "string",
+          "enum": ["surefire", "failsafe", "checkstyle", "spotbugs", "enforcer", "jacoco"]
+        },
+        "mavenPlugin": {
+          "type": "string"
+        },
+        "mavenPhase": {
+          "type": "string"
+        },
+        "testClass": {
+          "type": "string"
+        },
+        "testName": {
+          "type": "string"
+        },
+        "failureKind": {
+          "type": "string",
+          "enum": ["failure", "error", "violation", "bug", "rule", "threshold"]
+        },
+        "failureType": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "reproduceCommand": {
+          "type": "string"
+        },
+        "confidence": {
+          "type": "string",
+          "enum": ["high"]
+        },
+        "confidenceReasons": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "sourceReportFormat": {
+          "type": "string",
+          "enum": ["junit-xml", "checkstyle-xml", "spotbugs-xml", "maven-log"]
+        }
+      }
+    }
+  }
+}

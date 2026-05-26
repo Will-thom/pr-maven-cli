@@ -133,6 +133,8 @@ prmaven why -project . -format json > prmaven-report.json || true
 exit "$maven_status"
 ```
 
+When a workflow needs a machine-checked report contract, validate `prmaven-report.json` with [../schema/prmaven-report.schema.json](../schema/prmaven-report.schema.json) before uploading or handing it to another tool.
+
 A complete GitHub Actions example is available at [../examples/github-actions/triage-maven-failures.yml](../examples/github-actions/triage-maven-failures.yml).
 
 ## Library Usage
