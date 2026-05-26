@@ -1,0 +1,52 @@
+name: Maven failure triage
+
+on:
+  pull_request:
+
+jobs:
+  test-and-triage:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout project
+        uses: actions/checkout@v6
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: stable
+
+      - name: Run Maven tests
+        id: maven
+        continue-on-error: true
+        run: mvn -B verify
+
+      - name: Install PR Maven CLI
+        if: always()
+        run: go install github.com/Will-thom/pr-maven-cli/cmd/prmaven@latest
+
+      - name: Print Maven failure context
+        if: always()
+        run: prmaven why -project . || true
+
+      - name: Write Maven failure context JSON
+        if: always()
+        run: prmaven why -project . -format json > prmaven-report.json || true
+
+      - name: Upload Maven failure context
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: prmaven-report
+          path: prmaven-report.json
+
+      - name: Preserve Maven result
+        if: steps.maven.outcome == 'failure'
+        run: exit 1
+
