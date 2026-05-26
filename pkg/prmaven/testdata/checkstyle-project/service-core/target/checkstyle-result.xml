@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<checkstyle version="10.12.5">
+  <file name="service-core/src/main/java/dev/prmaven/demo/OrderService.java">
+    <error
+      line="17"
+      column="5"
+      severity="error"
+      message="Line is longer than 120 characters (found 134)."
+      source="com.puppycrawl.tools.checkstyle.checks.sizes.LineLengthCheck" />
+  </file>
+</checkstyle>

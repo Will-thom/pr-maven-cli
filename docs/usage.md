@@ -108,6 +108,7 @@ The CLI scans module-level report folders such as:
 ```text
 target/surefire-reports
 target/failsafe-reports
+target/checkstyle-result.xml
 ```
 
 ## CI Pattern
