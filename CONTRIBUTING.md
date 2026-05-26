@@ -29,6 +29,8 @@ go run ./cmd/prmaven why -project demo/multi-module-failure -format json
 
 The demo includes versioned Maven report fixtures under `demo/multi-module-failure/**/target/*-reports`.
 
+For the full test strategy, including golden files, CLI end-to-end tests, race tests, and CI behavior, read [docs/testing.md](docs/testing.md).
+
 ## Contribution Rules
 
 - Keep PRs focused.
@@ -55,6 +57,7 @@ Good first issues usually fit one of these areas:
 
 - [ ] The PR solves one issue or one clearly scoped problem.
 - [ ] `go test ./...` passes.
+- [ ] Golden files are updated when human-readable output intentionally changes.
 - [ ] New behavior is covered by tests or fixtures.
 - [ ] Documentation is updated when user-facing behavior changes.
 - [ ] JSON output compatibility is preserved or the breaking change is explicitly justified.

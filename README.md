@@ -166,6 +166,7 @@ This is useful for:
 - [Manifesto](MANIFESTO.md)
 - [Roadmap](ROADMAP.md)
 - [Contributing](CONTRIBUTING.md)
+- [Testing](docs/testing.md)
 - [Governance](GOVERNANCE.md)
 - [Security](SECURITY.md)
 

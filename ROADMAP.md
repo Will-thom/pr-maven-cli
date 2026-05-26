@@ -24,8 +24,12 @@ Scope:
 - Module mapping from report paths.
 - Minimal reproduction command generation.
 - Demo Maven multi-module fixture.
+- Demo no-failure fixture.
 - Unit tests for parser and formatter behavior.
 - End-to-end CLI tests.
+- Golden tests for text output.
+- GitHub Actions CI for Linux, Windows, macOS, Go 1.22.x, and stable Go.
+- Race detector and coverage jobs.
 - Public README, manifesto, contribution guide, license, roadmap, issue templates.
 - Repository visibility changed to public.
 
@@ -33,8 +37,11 @@ Acceptance criteria:
 
 - `go test ./...` passes.
 - Demo command returns findings from both Surefire and Failsafe fixtures.
+- No-failure demo exits successfully and reports zero findings.
 - JSON output is parseable and stable enough for CI/agent consumption.
 - Text output gives module, plugin, phase, test, report path, confidence, and reproduction command.
+- Text output is protected by golden tests.
+- CI runs the Stage 1 suite across supported operating systems.
 - No network or external service is required for core functionality.
 - Stage 2 and Stage 3 issues exist in GitHub with contributor-friendly acceptance criteria.
 
