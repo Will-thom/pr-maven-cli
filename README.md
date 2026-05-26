@@ -181,6 +181,7 @@ This is useful for:
 - [Installation](docs/installation.md)
 - [Usage guide](docs/usage.md)
 - [JSON contract](docs/json-contract.md)
+- [JSON schema](schema/prmaven-report.schema.json)
 - [Examples](examples/README.md)
 - [Integrations](docs/integrations.md)
 - [Contributing](CONTRIBUTING.md)
