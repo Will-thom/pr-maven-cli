@@ -40,6 +40,19 @@ Jobs:
 - `CodeQL`: static analysis for Go.
 - `Dependency review`: reviews dependency changes on pull requests.
 
+## Contributor Acknowledgement Workflow
+
+File: `.github/workflows/thank-contributor.yml`
+
+Runs on:
+
+- new issues;
+- new pull requests.
+
+The workflow posts the standard thank-you message from `.github/contributor-thanks.md`. It uses a hidden marker to avoid duplicate comments if the workflow is re-run.
+
+For pull requests from forks, the workflow uses `pull_request_target` without checking out or executing contributor code. It only reads the base repository template and writes a comment.
+
 ## Release Workflow
 
 File: `.github/workflows/release.yml`

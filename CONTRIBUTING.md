@@ -33,6 +33,8 @@ For the full test strategy, including golden files, CLI end-to-end tests, race t
 
 For the GitHub pipeline, release flow, and branch protection recommendation, read [docs/ci.md](docs/ci.md) and [docs/release.md](docs/release.md).
 
+Every new issue and pull request receives the standard contributor thank-you message from [.github/contributor-thanks.md](.github/contributor-thanks.md). The automation lives in `.github/workflows/thank-contributor.yml`.
+
 ## Contribution Rules
 
 - Keep PRs focused.
