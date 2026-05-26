@@ -1,10 +1,10 @@
 # Governance
 
-PR Maven CLI is founded by William Thomaz.
+PR Maven CLI is founded by Will-thom.
 
 The project is open to contributors and future maintainers. Maintainer rights should be granted based on sustained, high-quality contributions and respectful collaboration.
 
-The current principal maintainer is William Thomaz, GitHub: [@Will-thom](https://github.com/Will-thom).
+The current principal maintainer is Will-thom, GitHub: [@Will-thom](https://github.com/Will-thom).
 
 Maintainer details live in [MAINTAINERS.md](MAINTAINERS.md).
 
@@ -36,4 +36,4 @@ Maintainer details live in [MAINTAINERS.md](MAINTAINERS.md).
 
 The project uses founder-led consensus.
 
-For now, William Thomaz has final decision authority on scope, roadmap, release timing, and maintainer access.
+For now, Will-thom has final decision authority on scope, roadmap, release timing, and maintainer access.

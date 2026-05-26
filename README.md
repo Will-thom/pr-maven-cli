@@ -204,7 +204,7 @@ Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a PR.
 
 ## Founder
 
-PR Maven CLI was founded by William Thomaz.
+PR Maven CLI was founded by Will-thom.
 
 ## License
 
