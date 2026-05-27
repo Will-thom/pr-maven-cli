@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"os/exec"
 	"strings"
 	"testing"
@@ -118,6 +119,39 @@ func TestCLIEndToEndNoFailure(t *testing.T) {
 		if !strings.Contains(text, expected) {
 			t.Fatalf("CLI output missing %q\n%s", expected, text)
 		}
+	}
+}
+
+func TestCLIEndToEndNoFailureJSON(t *testing.T) {
+	command := exec.Command("go", "run", ".", "why", "-project", "../../demo/no-failure", "-format", "json")
+	output, err := command.CombinedOutput()
+	if err != nil {
+		t.Fatalf("CLI exit error = %v\n%s", err, string(output))
+	}
+
+	var report struct {
+		Summary struct {
+			ModuleCount  int `json:"moduleCount"`
+			ReportCount  int `json:"reportCount"`
+			FindingCount int `json:"findingCount"`
+		} `json:"summary"`
+		Findings []struct{} `json:"findings"`
+	}
+	if err := json.Unmarshal(output, &report); err != nil {
+		t.Fatalf("CLI JSON output is invalid: %v\n%s", err, string(output))
+	}
+
+	if report.Summary.ModuleCount != 2 {
+		t.Fatalf("module count = %d, want 2", report.Summary.ModuleCount)
+	}
+	if report.Summary.ReportCount != 1 {
+		t.Fatalf("report count = %d, want 1", report.Summary.ReportCount)
+	}
+	if report.Summary.FindingCount != 0 {
+		t.Fatalf("finding count = %d, want 0", report.Summary.FindingCount)
+	}
+	if len(report.Findings) != 0 {
+		t.Fatalf("findings = %d, want 0", len(report.Findings))
 	}
 }
 
