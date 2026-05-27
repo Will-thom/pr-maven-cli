@@ -2,7 +2,9 @@
 
 Maven-aware PR and CI triage for Java teams.
 
-PR Maven CLI turns local Maven test reports into actionable failure context for humans, maintainers, CI systems, and coding agents.
+PR Maven CLI helps Java teams understand Maven CI failures from local report artifacts.
+
+It discovers Maven modules, parses common test, quality, and build reports, maps findings back to modules, and emits deterministic text or JSON output for humans, CI systems, maintainers, and coding agents.
 
 It answers the first production question after a Maven PR fails:
 
