@@ -21,7 +21,7 @@ schema/prmaven-report.schema.json
 CI systems can validate generated reports with any JSON Schema Draft 2020-12 compatible validator. Example with `ajv-cli`:
 
 ```bash
-prmaven why -project . -format json > prmaven-report.json || true
+prmaven why -project . -format json -output prmaven-report.json || true
 npx ajv-cli validate -s schema/prmaven-report.schema.json -d prmaven-report.json
 ```
 

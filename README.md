@@ -100,6 +100,7 @@ prmaven fails -project .
 prmaven fails -project . -format json
 prmaven why -project .
 prmaven why -project . -format json
+prmaven why -project . -format json -output prmaven-report.json
 ```
 
 Stage 1 treats `fails` and `why` as equivalent commands. The distinction is reserved for future UX where `fails` may list failures and `why` may include richer causality evidence.

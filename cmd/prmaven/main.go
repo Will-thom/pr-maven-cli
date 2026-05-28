@@ -26,6 +26,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	flags.SetOutput(stderr)
 	projectDir := flags.String("project", ".", "Maven project directory")
 	format := flags.String("format", "text", "output format: text or json")
+	outputPath := flags.String("output", "", "write output to file instead of stdout")
 
 	if err := flags.Parse(args); err != nil {
 		return 2
@@ -55,20 +56,41 @@ func run(args []string, stdout, stderr io.Writer) int {
 	}
 
 	switch *format {
-	case "json":
-		if err := prmaven.WriteJSON(stdout, report); err != nil {
-			fmt.Fprintln(stderr, err)
-			return 1
-		}
-	case "text":
-		if err := prmaven.WriteText(stdout, report); err != nil {
-			fmt.Fprintln(stderr, err)
-			return 1
-		}
+	case "json", "text":
 	default:
 		fmt.Fprintf(stderr, "unknown format %q\n", *format)
 		fmt.Fprintln(stderr, "available formats: text, json")
 		return 2
+	}
+
+	output := stdout
+	var outputFile *os.File
+	if *outputPath != "" {
+		outputFile, err = os.Create(*outputPath)
+		if err != nil {
+			fmt.Fprintf(stderr, "create output file %q: %v\n", *outputPath, err)
+			return 1
+		}
+		output = outputFile
+	}
+
+	var writeErr error
+	switch *format {
+	case "json":
+		writeErr = prmaven.WriteJSON(output, report)
+	case "text":
+		writeErr = prmaven.WriteText(output, report)
+	}
+
+	if outputFile != nil {
+		if closeErr := outputFile.Close(); writeErr == nil && closeErr != nil {
+			writeErr = closeErr
+		}
+	}
+
+	if writeErr != nil {
+		fmt.Fprintln(stderr, writeErr)
+		return 1
 	}
 
 	if report.Summary.FindingCount > 0 {
