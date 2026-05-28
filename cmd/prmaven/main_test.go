@@ -136,6 +136,78 @@ func TestRunWritesJSONOutputFile(t *testing.T) {
 	}
 }
 
+func TestRunFiltersModuleByArtifactID(t *testing.T) {
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+
+	code := run([]string{"fails", "-project", "../../demo/multi-module-failure", "-module", "payment-core"}, &stdout, &stderr)
+	if code != 1 {
+		t.Fatalf("exit code = %d, want 1", code)
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("stderr = %q, want empty", stderr.String())
+	}
+
+	text := stdout.String()
+	for _, expected := range []string{
+		"Findings: 1",
+		"Module: payment-core (payment-core)",
+		"maven-surefire-plugin",
+	} {
+		if !strings.Contains(text, expected) {
+			t.Fatalf("stdout missing %q\n%s", expected, text)
+		}
+	}
+	if strings.Contains(text, "payment-api") {
+		t.Fatalf("stdout contains filtered module payment-api\n%s", text)
+	}
+}
+
+func TestRunFiltersModuleByPath(t *testing.T) {
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+
+	code := run([]string{"why", "-project", "../../pkg/prmaven/testdata/nested-module-project", "-module", "platform/service-core"}, &stdout, &stderr)
+	if code != 1 {
+		t.Fatalf("exit code = %d, want 1", code)
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("stderr = %q, want empty", stderr.String())
+	}
+
+	text := stdout.String()
+	for _, expected := range []string{
+		"Findings: 1",
+		"Module: service-core (platform/service-core)",
+		"platform/service-core/target/surefire-reports/TEST-dev.prmaven.demo.NestedPaymentTest.xml",
+	} {
+		if !strings.Contains(text, expected) {
+			t.Fatalf("stdout missing %q\n%s", expected, text)
+		}
+	}
+}
+
+func TestRunFiltersModuleNoMatch(t *testing.T) {
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+
+	code := run([]string{"fails", "-project", "../../demo/multi-module-failure", "-module", "does-not-exist"}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("exit code = %d, want 0\nstderr=%s\nstdout=%s", code, stderr.String(), stdout.String())
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("stderr = %q, want empty", stderr.String())
+	}
+
+	text := stdout.String()
+	if !strings.Contains(text, "Findings: 0") {
+		t.Fatalf("stdout missing no-match findings summary\n%s", text)
+	}
+	if strings.Contains(text, "payment-core") || strings.Contains(text, "payment-api") {
+		t.Fatalf("stdout contains filtered findings\n%s", text)
+	}
+}
+
 func TestRunReturnsUsageExitCode(t *testing.T) {
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
