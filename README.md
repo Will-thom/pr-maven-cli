@@ -12,6 +12,66 @@ It answers the first production question after a Maven PR fails:
 What failed, in which module, through which Maven plugin, and how do I reproduce it locally?
 ```
 
+## Why This Exists
+
+Generic PR tools can show that CI failed. Generic agents can inspect logs when prompted. Build observability platforms can offer deep build analysis.
+
+PR Maven CLI focuses on a narrower production workflow:
+
+```text
+Turn Maven CI failures into deterministic PR context.
+```
+
+This is useful for:
+
+- Java teams with Maven multi-module repositories.
+- OSS maintainers triaging failing PRs.
+- Engineering platform teams.
+- Regulated teams that cannot send logs to external services.
+- Internal agent platforms that need structured local evidence.
+
+## Project Documents
+
+- [Manifesto](MANIFESTO.md)
+- [Roadmap](ROADMAP.md)
+- [Installation](docs/installation.md)
+- [Usage guide](docs/usage.md)
+- [JSON contract](docs/json-contract.md)
+- [JSON schema](schema/prmaven-report.schema.json)
+- [Examples](examples/README.md)
+- [Integrations](docs/integrations.md)
+- [Contributing](CONTRIBUTING.md)
+- [Permission posture](docs/permissions.md)
+- [Testing](docs/testing.md)
+- [CI/CD](docs/ci.md)
+- [Release process](docs/release.md)
+- [Governance](GOVERNANCE.md)
+- [Maintainers](MAINTAINERS.md)
+- [Security](SECURITY.md)
+
+## Contributing
+
+The project is designed to accept many focused contributions.
+
+Good contribution areas:
+
+- More Maven report parsers.
+- More fixtures.
+- Better CLI ergonomics.
+- JSON schema documentation.
+- CI examples.
+- Maven edge cases.
+
+Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a PR.
+
+## Founder
+
+PR Maven CLI was founded by Will-thom.
+
+## License
+
+Apache-2.0.
+
 ## Status
 
 Stage 1 MVP.
@@ -159,63 +219,3 @@ It contains a Maven aggregator project with two modules:
 - `payment-api`, with a Failsafe error.
 
 The reports are intentionally committed under `target/*-reports` because they are test fixtures.
-
-## Why This Exists
-
-Generic PR tools can show that CI failed. Generic agents can inspect logs when prompted. Build observability platforms can offer deep build analysis.
-
-PR Maven CLI focuses on a narrower production workflow:
-
-```text
-Turn Maven CI failures into deterministic PR context.
-```
-
-This is useful for:
-
-- Java teams with Maven multi-module repositories.
-- OSS maintainers triaging failing PRs.
-- Engineering platform teams.
-- Regulated teams that cannot send logs to external services.
-- Internal agent platforms that need structured local evidence.
-
-## Project Documents
-
-- [Manifesto](MANIFESTO.md)
-- [Roadmap](ROADMAP.md)
-- [Installation](docs/installation.md)
-- [Usage guide](docs/usage.md)
-- [JSON contract](docs/json-contract.md)
-- [JSON schema](schema/prmaven-report.schema.json)
-- [Examples](examples/README.md)
-- [Integrations](docs/integrations.md)
-- [Contributing](CONTRIBUTING.md)
-- [Permission posture](docs/permissions.md)
-- [Testing](docs/testing.md)
-- [CI/CD](docs/ci.md)
-- [Release process](docs/release.md)
-- [Governance](GOVERNANCE.md)
-- [Maintainers](MAINTAINERS.md)
-- [Security](SECURITY.md)
-
-## Contributing
-
-The project is designed to accept many focused contributions.
-
-Good contribution areas:
-
-- More Maven report parsers.
-- More fixtures.
-- Better CLI ergonomics.
-- JSON schema documentation.
-- CI examples.
-- Maven edge cases.
-
-Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a PR.
-
-## Founder
-
-PR Maven CLI was founded by Will-thom.
-
-## License
-
-Apache-2.0.
