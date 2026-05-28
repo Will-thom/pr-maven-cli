@@ -100,6 +100,7 @@ prmaven fails -project .
 prmaven fails -project . -format json
 prmaven why -project .
 prmaven why -project . -format json
+prmaven why -project . -module payment-core
 prmaven why -project . -format json -output prmaven-report.json
 ```
 

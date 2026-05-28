@@ -15,6 +15,7 @@ prmaven fails -project .
 prmaven fails -project . -format json
 prmaven why -project .
 prmaven why -project . -format json
+prmaven why -project . -module payment-core
 prmaven why -project . -format json -output prmaven-report.json
 prmaven version
 ```
@@ -25,7 +26,10 @@ Stage 1 treats `fails` and `why` as equivalent analysis commands. The separate n
 
 - `-project`: Maven project directory to analyze. Defaults to `.`.
 - `-format`: output format. Supported values are `text` and `json`. Defaults to `text`.
+- `-module`: optional Maven module filter. Matches either a module path, such as `payment-core`, or a module artifactId. Limits emitted findings to matching modules.
 - `-output`: optional file path for the generated text or JSON report. When omitted, output is written to stdout.
+
+When `-module` is set and no module matches, PR Maven CLI emits zero findings for that filtered view.
 
 ## Exit Codes
 

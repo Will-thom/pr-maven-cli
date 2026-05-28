@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path"
+	"strings"
 
 	"github.com/Will-thom/pr-maven-cli/pkg/prmaven"
 )
@@ -26,6 +28,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	flags.SetOutput(stderr)
 	projectDir := flags.String("project", ".", "Maven project directory")
 	format := flags.String("format", "text", "output format: text or json")
+	moduleFilter := flags.String("module", "", "limit findings to a Maven module path or artifactId")
 	outputPath := flags.String("output", "", "write output to file instead of stdout")
 
 	if err := flags.Parse(args); err != nil {
@@ -54,6 +57,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, err)
 		return 1
 	}
+	report = filterReportByModule(report, *moduleFilter)
 
 	switch *format {
 	case "json", "text":
@@ -97,4 +101,36 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 	return 0
+}
+
+func filterReportByModule(report prmaven.Report, moduleFilter string) prmaven.Report {
+	moduleFilter = strings.TrimSpace(moduleFilter)
+	if moduleFilter == "" {
+		return report
+	}
+
+	matchingModulePaths := map[string]bool{}
+	cleanFilterPath := cleanModulePath(moduleFilter)
+	for _, module := range report.Modules {
+		if module.Name == moduleFilter || cleanModulePath(module.Path) == cleanFilterPath {
+			matchingModulePaths[module.Path] = true
+		}
+	}
+
+	filteredFindings := make([]prmaven.Finding, 0, len(report.Findings))
+	for _, finding := range report.Findings {
+		if matchingModulePaths[finding.ModulePath] {
+			filteredFindings = append(filteredFindings, finding)
+		}
+	}
+
+	report.Findings = filteredFindings
+	report.Summary.FindingCount = len(filteredFindings)
+	return report
+}
+
+func cleanModulePath(value string) string {
+	value = strings.TrimSpace(value)
+	value = strings.ReplaceAll(value, "\\", "/")
+	return path.Clean(value)
 }
