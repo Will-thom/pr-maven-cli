@@ -3,7 +3,9 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -53,6 +55,84 @@ func TestRunReturnsZeroForNoFailureProject(t *testing.T) {
 	}
 	if !strings.Contains(stdout.String(), "Findings: 0") {
 		t.Fatalf("stdout missing no-failure summary\n%s", stdout.String())
+	}
+}
+
+func TestRunWritesTextOutputFile(t *testing.T) {
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	outputPath := filepath.Join(t.TempDir(), "prmaven-report.txt")
+
+	code := run([]string{"fails", "-project", "../../demo/multi-module-failure", "-output", outputPath}, &stdout, &stderr)
+	if code != 1 {
+		t.Fatalf("exit code = %d, want 1", code)
+	}
+	if stdout.Len() != 0 {
+		t.Fatalf("stdout = %q, want empty when output file is set", stdout.String())
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("stderr = %q, want empty", stderr.String())
+	}
+
+	output, err := os.ReadFile(outputPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(output)
+	for _, expected := range []string{
+		"PR Maven CLI - Maven failure context",
+		"Findings: 2",
+		"maven-surefire-plugin",
+	} {
+		if !strings.Contains(text, expected) {
+			t.Fatalf("output file missing %q\n%s", expected, text)
+		}
+	}
+}
+
+func TestRunWritesJSONOutputFile(t *testing.T) {
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	outputPath := filepath.Join(t.TempDir(), "prmaven-report.json")
+
+	code := run([]string{"why", "-project", "../../demo/no-failure", "-format", "json", "-output", outputPath}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("exit code = %d, want 0\nstderr=%s\nstdout=%s", code, stderr.String(), stdout.String())
+	}
+	if stdout.Len() != 0 {
+		t.Fatalf("stdout = %q, want empty when output file is set", stdout.String())
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("stderr = %q, want empty", stderr.String())
+	}
+
+	output, err := os.ReadFile(outputPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var report struct {
+		Summary struct {
+			ModuleCount  int `json:"moduleCount"`
+			ReportCount  int `json:"reportCount"`
+			FindingCount int `json:"findingCount"`
+		} `json:"summary"`
+		Findings []struct{} `json:"findings"`
+	}
+	if err := json.Unmarshal(output, &report); err != nil {
+		t.Fatalf("output file contains invalid JSON: %v\n%s", err, string(output))
+	}
+	if report.Summary.ModuleCount != 2 {
+		t.Fatalf("module count = %d, want 2", report.Summary.ModuleCount)
+	}
+	if report.Summary.ReportCount != 1 {
+		t.Fatalf("report count = %d, want 1", report.Summary.ReportCount)
+	}
+	if report.Summary.FindingCount != 0 {
+		t.Fatalf("finding count = %d, want 0", report.Summary.FindingCount)
+	}
+	if len(report.Findings) != 0 {
+		t.Fatalf("findings = %d, want 0", len(report.Findings))
 	}
 }
 

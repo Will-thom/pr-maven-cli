@@ -15,6 +15,7 @@ prmaven fails -project .
 prmaven fails -project . -format json
 prmaven why -project .
 prmaven why -project . -format json
+prmaven why -project . -format json -output prmaven-report.json
 prmaven version
 ```
 
@@ -24,6 +25,7 @@ Stage 1 treats `fails` and `why` as equivalent analysis commands. The separate n
 
 - `-project`: Maven project directory to analyze. Defaults to `.`.
 - `-format`: output format. Supported values are `text` and `json`. Defaults to `text`.
+- `-output`: optional file path for the generated text or JSON report. When omitted, output is written to stdout.
 
 ## Exit Codes
 
@@ -128,7 +130,7 @@ mvn -B verify
 maven_status=$?
 
 prmaven why -project . || true
-prmaven why -project . -format json > prmaven-report.json || true
+prmaven why -project . -format json -output prmaven-report.json || true
 
 exit "$maven_status"
 ```
